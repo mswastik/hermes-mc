@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hermes Mission Control</title>
+<!-- React UMD (pinned 18.3.1, vendored locally so the page needs no
+     internet). The react + react-dom pair is guaranteed matching. -->
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<style>
+  :root{
+    --mc-bg:#0b0e14; --mc-panel:#121723; --mc-panel-2:#0f1420; --mc-border:#1e2636;
+    --mc-fg:#767d73; --mc-muted:#a3b1c2; --mc-faint:#7d8aa0;
+    --mc-accent:#2dd4bf; --mc-accent-2:#38bdf8;
+    --mc-good:#34d399; --mc-warn:#fbbf24; --mc-bad:#f87171; --mc-info:#60a5fa;
+    --mc-rail:#0d1119;
+  }
+  [data-theme="light"]{
+    --mc-bg:#f4f6fa; --mc-panel:#ffffff; --mc-panel-2:#eef1f6; --mc-border:#d6dce5;
+    --mc-fg:#1a2230; --mc-muted:#64748b; --mc-faint:#94a3b8;
+    --mc-accent:#0d9488; --mc-accent-2:#0284c7;
+    --mc-good:#059669; --mc-warn:#d97706; --mc-bad:#dc2626; --mc-info:#2563eb;
+    --mc-rail:#e9edf3;
+  }
+  [data-theme="light"] .mc-logo{color:#fff}
+  [data-theme="light"] .mc-nav button:hover{background:#e3e8f0}
+  [data-theme="light"] .mc-nav button.active{background:#d6ecf2;color:#0b3b46}
+  [data-theme="light"] .mc-table tbody tr:hover{background:#eef2f8}
+  [data-theme="light"] .mc-card:hover{background:#eef2f8}
+  [data-theme="light"] .mc-card.sel{border-color:var(--mc-accent);box-shadow:0 0 0 1px var(--mc-accent)}
+  [data-theme="light"] .mc-logs{background:#0b0e14;color:#d4dae4}
+  [data-theme="light"] .mc-stat .v{color:var(--mc-fg)}
+  [data-theme="light"] .mc-logo{color:#fff}
+  [data-theme="light"] .mc-nav button:hover{background:#e3e8f0;color:var(--mc-fg)}
+  [data-theme="light"] .mc-nav button.active{background:#d6ecf2;color:#0b3b46;box-shadow:inset 2px 0 0 var(--mc-accent)}
+  [data-theme="light"] .mc-btn{background:#e2e8f1;border-color:#cdd5e0;color:var(--mc-fg)}
+  [data-theme="light"] .mc-btn:hover{background:#d3dce8}
+  [data-theme="light"] .mc-btn.primary{color:#fff}
+  [data-theme="light"] .mc-input{background:#fff;border-color:#cdd5e0;color:var(--mc-fg)}
+  [data-theme="light"] .mc-topbar{background:#fff}
+  [data-theme="light"] .mc-body{background:var(--mc-bg)}
+  [data-theme="light"] .mc-table{background:#fff}
+  [data-theme="light"] .mc-table th{background:var(--mc-panel-2)}
+  [data-theme="light"] .mc-table tbody tr:hover{background:#eef2f8}
+  [data-theme="light"] .mc-card{background:#fff}
+  [data-theme="light"] .mc-card:hover{background:#eef2f8}
+  [data-theme="light"] .mc-card.sel{border-color:var(--mc-accent);box-shadow:0 0 0 1px var(--mc-accent)}
+  [data-theme="light"] .mc-def dd.mono{color:var(--mc-fg)}
+  [data-theme="light"] .mc-chat .mc-msg.assistant{background:#fff;border-color:#d6dce5}
+  [data-theme="light"] .mc-detail-pane{background:#fff}
+  [data-theme="light"] .mc-empty{background:#fff;color:var(--mc-faint)}
+  [data-theme="light"] .mc-err{background:#fde8e8;border-color:#f5c2c2;color:#b91c1c}
+  [data-theme="light"] .mc-logs{background:#0b0e14;color:#d4dae4}
+  [data-theme="light"] pre{color:var(--mc-fg)}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--mc-bg);color:var(--mc-fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  a{color:var(--mc-accent-2);text-decoration:none}
+  button{font:inherit;color:inherit;cursor:pointer}
+  .mc-shell{display:flex;height:100vh;overflow:hidden}
+  /* ---- left rail ---- */
+  .mc-rail{width:228px;flex:0 0 228px;background:var(--mc-rail);border-right:1px solid var(--mc-border);
+    display:flex;flex-direction:column;overflow-y:auto}
+  .mc-brand{display:flex;align-items:center;gap:10px;padding:16px 16px 14px}
+  .mc-logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--mc-accent),var(--mc-accent-2));
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#04121a;font-size:16px}
+  .mc-brand h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.2px}
+  .mc-brand .sub{font-size:11px;color:var(--mc-faint)}
+  .mc-nav{padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+  .mc-nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;
+    padding:9px 10px;border-radius:8px;color:var(--mc-muted);font-size:13.5px;transition:.12s}
+  .mc-nav button:hover{background:#161d2b;color:var(--mc-fg)}
+  .mc-nav button.active{background:#16263a;color:var(--mc-fg);box-shadow:inset 2px 0 0 var(--mc-accent)}
+  .mc-nav .ico{width:18px;height:18px;flex:0 0 18px;color:var(--mc-accent-2)}
+  .mc-rail-foot{margin-top:auto;padding:12px 14px;font-size:11px;color:var(--mc-faint);border-top:1px solid var(--mc-border)}
+  .mc-rail-foot .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mc-good);margin-right:6px;vertical-align:middle}
+  /* ---- main ---- */
+  .mc-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .mc-topbar{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--mc-border);
+    background:var(--mc-panel-2)}
+  .mc-topbar h2{margin:0;font-size:16px;font-weight:700}
+  .mc-topbar .crumb{color:var(--mc-faint);font-size:12px}
+  .mc-topbar .spacer{flex:1}
+  .mc-btn{background:#1b2433;border:1px solid var(--mc-border);border-radius:8px;padding:7px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  .mc-btn:hover{background:#222d3f}
+  .mc-btn.primary{background:var(--mc-accent);color:#04121a;border-color:transparent;font-weight:600}
+  .mc-btn.icon{padding:7px}
+  .mc-body{flex:1;overflow-y:auto;padding:20px}
+  .mc-section{margin-bottom:26px}
+  .mc-section > h3{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--mc-faint);margin:0 0 12px}
+  /* ---- stat grid ---- */
+  .mc-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .mc-stat{background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;padding:14px 16px}
+  .mc-stat .v{font-size:22px;font-weight:700;line-height:1.1}
+  .mc-stat .k{font-size:11.5px;color:var(--mc-muted);margin-top:4px}
+  .mc-stat .v.good{color:var(--mc-good)} .mc-stat .v.warn{color:var(--mc-warn)} .mc-stat .v.bad{color:var(--mc-bad)}
+  /* ---- table ---- */
+  .mc-table{width:100%;border-collapse:collapse;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;overflow:hidden}
+  .mc-table th,.mc-table td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--mc-border);font-size:13px;vertical-align:middle}
+  .mc-table th{background:var(--mc-panel-2);color:var(--mc-muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none}
+  .mc-table th:hover{color:var(--mc-fg)}
+  .mc-table tr:last-child td{border-bottom:0}
+  .mc-table tbody tr:hover{background:#161d2b}
+  .mc-table .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--mc-muted)}
+  /* ---- pills / badges ---- */
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid transparent}
+  .pill .d{width:6px;height:6px;border-radius:50%}
+  .pill.good{background:rgba(52,211,153,.12);color:var(--mc-good);border-color:rgba(52,211,153,.3)}
+  .pill.good .d{background:var(--mc-good)}
+  .pill.warn{background:rgba(251,191,36,.12);color:var(--mc-warn);border-color:rgba(251,191,36,.3)}
+  .pill.warn .d{background:var(--mc-warn)}
+  .pill.bad{background:rgba(248,113,113,.12);color:var(--mc-bad);border-color:rgba(248,113,113,.3)}
+  .pill.bad .d{background:var(--mc-bad)}
+  .pill.muted{background:#1a2230;color:var(--mc-muted)}
+  .pill.info{background:rgba(96,165,250,.12);color:var(--mc-info);border-color:rgba(96,165,250,.3)}
+  .pill.info .d{background:var(--mc-info)}
+  /* ---- master/detail ---- */
+  .mc-split{display:flex;gap:16px;align-items:flex-start}
+  .mc-list{flex:0 0 360px;max-width:360px;display:flex;flex-direction:column;gap:8px}
+  .mc-card{background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.12s}
+  .mc-card:hover{border-color:#2b3a52;background:#151c2a}
+  .mc-card.sel{border-color:var(--mc-accent);box-shadow:0 0 0 1px var(--mc-accent)}
+  .mc-card .ttl{font-weight:600;font-size:13.5px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .mc-card .meta{font-size:11.5px;color:var(--mc-muted);margin-top:4px}
+  .mc-detail-pane{flex:1;min-width:0;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;padding:18px}
+  /* ---- def list ---- */
+  .mc-def{display:grid;grid-template-columns:200px 1fr;gap:6px 16px;margin:0}
+  .mc-def dt{color:var(--mc-muted);font-size:12.5px;padding:4px 0}
+  .mc-def dd{margin:0;padding:4px 0;font-size:13px;word-break:break-word}
+  .mc-def dd.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--mc-fg)}
+  /* ---- config tree ---- */
+  .mc-tree{font-size:13px}
+  .mc-tree .node{padding:3px 0}
+  .mc-tree .key{color:var(--mc-accent-2);font-family:ui-monospace,Menlo,monospace}
+  .mc-tree .ty{color:var(--mc-faint);font-size:11px;margin-left:6px}
+  .mc-tree .val{color:var(--mc-fg);font-family:ui-monospace,Menlo,monospace;margin-left:8px}
+  .mc-tree .children{margin-left:16px;border-left:1px solid var(--mc-border);padding-left:10px}
+  .mc-tree .row{display:flex;align-items:baseline;gap:4px;padding:1px 0}
+  .mc-tree .tw{width:12px;color:var(--mc-faint);cursor:pointer;user-select:none}
+  /* ---- config editor (Stage 2) ---- */
+  .cfg-editor{max-height:calc(100vh - 140px);overflow:auto;padding:4px 0}
+  .cfg-obj{display:flex;flex-direction:column;gap:4px}
+  .cfg-nested{margin:6px 0 6px 14px;border-left:2px solid var(--mc-border);padding-left:12px}
+  .cfg-head{font-size:12px;font-weight:600;color:var(--mc-accent-2);margin:4px 0 2px;font-family:ui-monospace,Menlo,monospace}
+  .cfg-row{display:grid;grid-template-columns:240px 1fr auto;align-items:center;gap:10px;padding:4px 6px;border-radius:6px}
+  .cfg-row:hover{background:var(--mc-panel-2)}
+  .cfg-key{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--mc-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cfg-input{max-width:420px;width:100%}
+  .cfg-area{width:100%;max-width:560px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .cfg-type{font-size:11px;color:var(--mc-faint);white-space:nowrap}
+  .cfg-toggle{width:42px;height:22px;border-radius:12px;background:var(--mc-border);border:0;position:relative;transition:.15s;flex:0 0 auto}
+  .cfg-toggle.on{background:var(--mc-accent)}
+  .cfg-toggle .knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s}
+  .cfg-toggle.on .knob{left:22px}
+  [data-theme="light"] .cfg-toggle{background:#c4cdda}
+  [data-theme="light"] .cfg-toggle.on{background:var(--mc-accent)}
+  /* ---- misc ---- */
+  .mc-spin{width:22px;height:22px;border:2.5px solid var(--mc-border);border-top-color:var(--mc-accent);border-radius:50%;animation:sp 0.7s linear infinite;margin:30px auto}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .mc-center{display:flex;justify-content:center;padding:30px}
+  .mc-empty{padding:26px;text-align:center;color:var(--mc-faint);background:var(--mc-panel);border:1px dashed var(--mc-border);border-radius:10px}
+  .mc-err{color:var(--mc-bad);background:#1c1320;border:1px solid #4a2030;border-radius:10px;padding:14px;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  .mc-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .mc-input{background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:8px;padding:8px 12px;color:var(--mc-fg);font:inherit;min-width:200px}
+  .mc-input:focus{outline:none;border-color:var(--mc-accent)}
+  select.mc-input{cursor:pointer}
+  .mc-id{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--mc-muted)}
+  .mc-muted{color:var(--mc-muted)}
+  .mc-sub{color:var(--mc-faint);font-size:12.5px;margin:2px 0 0}
+  .mc-back{background:none;border:0;color:var(--mc-accent-2);display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:0;margin-bottom:12px}
+  .mc-bar{display:flex;align-items:flex-end;gap:3px;height:60px}
+  .mc-bar .b{flex:1;background:linear-gradient(180deg,var(--mc-accent),#0e7490);border-radius:3px 3px 0 0;min-height:2px}
+  .mc-bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--mc-faint)}
+  .mc-chat{max-height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+  .mc-msg{border-radius:10px;padding:10px 12px;font-size:13px;max-width:88%}
+  .mc-msg.user{background:#16263a;align-self:flex-end}
+  .mc-msg.assistant{background:var(--mc-panel-2);align-self:flex-start;border:1px solid var(--mc-border)}
+  .mc-msg .role{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--mc-faint);margin-bottom:4px}
+  .mc-logs{background:#0a0d13;border:1px solid var(--mc-border);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;max-height:560px;overflow-y:auto;line-height:1.6}
+  .ln.err{color:var(--mc-bad)} .ln.warn{color:var(--mc-warn)} .ln.info{color:var(--mc-info)}
+</style>
+</head>
+<body>
+<div id="mc-root"></div>
+<script>
+/* Mission Control - read-only Stage 1 (task-oriented layout).
+   Talks to the standard Hermes dashboard API through the 9120 proxy,
+   which injects the session token. No writes yet (Stage 2 adds PUT). */
+const BASE = "__MC_BASE__";          // e.g. http://127.0.0.1:9120
+const TOKEN = "__MC_TOKEN__";        // injected by the launcher
+
+const React = window.React;
+const ReactDOM = window.ReactDOM;
+const h = React.createElement;
+const useS = React.useState.bind(React);
+const useE = React.useEffect.bind(React);
+const useC = React.useCallback.bind(React);
+const useM = React.useMemo.bind(React);
+
+async function fetchJSON(path, opts) {
+  opts = opts || {};
+  const headers = Object.assign({}, opts.headers);
+  if (TOKEN) headers["X-Hermes-Session-Token"] = TOKEN;
+  if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+  const res = await fetch(BASE + path, { method: opts.method || "GET", headers, body: opts.body });
+  if (!res.ok) {
+    let msg = res.status + " " + res.statusText;
+    try { const j = await res.json(); if (j && j.detail) msg = j.detail; } catch (e) {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+function cn() { return Array.prototype.filter.call(arguments, Boolean).join(" "); }
+
+// ---- hooks ----
+function useAsync(fn, deps) {
+  const st = useS({ loading: true, data: null, error: null });
+  const tick = useS(0);
+  const reload = useC(function () { tick[1](function (t) { return t + 1; }); }, []);
+  useE(function () {
+    let alive = true;
+    st[1](function (s) { return { loading: true, data: s.data, error: null }; });
+    Promise.resolve().then(fn).then(function (d) {
+      if (alive) st[1]({ loading: false, data: d, error: null });
+    }).catch(function (e) {
+      if (alive) st[1]({ loading: false, data: null, error: e });
+    });
+    return function () { alive = false; };
+  }, deps.concat([tick[0]]));
+  return { loading: st[0].loading, data: st[0].data, error: st[0].error, reload: reload };
+}
+function useSort(rows, initialKey) {
+  const [key, setKey] = useS(initialKey || null);
+  const [dir, setDir] = useS(1);
+  const onSort = useC(function (k) {
+    if (k === key) setDir(-dir); else { setKey(k); setDir(1); }
+  }, [key]);
+  const sorted = useM(function () {
+    if (!key || !rows) return rows;
+    const r = rows.slice().sort(function (a, b) {
+      const av = a[key], bv = b[key];
+      if (av == null) return 1; if (bv == null) return -1;
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+    return r;
+  }, [rows, key, dir]);
+  return { sorted: sorted, sortKey: key, sortDir: dir, onSort: onSort };
+}
+
+// ---- helpers ----
+function timeAgo(t) {
+  if (!t) return "-";
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
+}
+function str(v) { if (v === null || v === undefined) return "-"; if (v === true) return "yes"; if (v === false) return "no"; if (typeof v === "object") return JSON.stringify(v); return String(v); }
+function fmt(n) { if (n == null) return "-"; return n.toLocaleString(); }
+function gatewayKind(d) {
+  const running = d.gateway_running;
+  if (running === false) return { kind: "bad", label: "stopped" };
+  const s = d.gateway_state;
+  if (s === "draining") return { kind: "warn", label: "draining" };
+  if (s === "running") return { kind: "good", label: "running" };
+  return { kind: "muted", label: str(s) };
+}
+function pillKind(ok) { return ok ? "good" : "bad"; }
+
+// ---- ICONS (inline svg) ----
+const ICONS = {
+  grid: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("rect", { x: 3, y: 3, width: 7, height: 7, rx: 1.5 }), h("rect", { x: 14, y: 3, width: 7, height: 7, rx: 1.5 }),
+    h("rect", { x: 14, y: 14, width: 7, height: 7, rx: 1.5 }), h("rect", { x: 3, y: 14, width: 7, height: 7, rx: 1.5 })); },
+  chip: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("rect", { x: 4, y: 4, width: 16, height: 16, rx: 2 }), h("path", { d: "M9 9h6v6H9z" }), h("path", { d: "M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" })); },
+  plug: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("path", { d: "M14 7V4a2 2 0 0 0-4 0v3M5 11a9 9 0 0 0 14 0M12 11v5" })); },
+  clock: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("circle", { cx: 12, cy: 12, r: 9 }), h("path", { d: "M12 7v5l3 3" })); },
+  shield: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("path", { d: "M12 3l7 3v6c0 5-3 7-7 9-4-2-7-4-7-9V6z" })); },
+  brain: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("path", { d: "M9 3a3 3 0 0 0-3 3 3 3 0 0 0-1 4 3 3 0 0 0 4 4 3 3 0 0 0 3 6M15 3a3 3 0 0 1 3 3 3 3 0 0 1 1 4 3 3 0 0 1-4 4 3 3 0 0 1-3 6" })); },
+  tools: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("path", { d: "M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.1-2.1z" })); },
+  spark: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("line", { x1: 6, y1: 20, x2: 6, y2: 12 }), h("line", { x1: 12, y1: 20, x2: 12, y2: 6 }), h("line", { x1: 18, y1: 20, x2: 18, y2: 14 }), h("line", { x1: 3, y1: 20, x2: 21, y2: 20 })); },
+  chat: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("path", { d: "M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" })); },
+  file: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" }), h("path", { d: "M14 2v6h6" })); },
+  sliders: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a),
+    h("line", { x1: 4, y1: 8, x2: 20, y2: 8 }), h("circle", { cx: 9, cy: 8, r: 2.2 }), h("line", { x1: 4, y1: 16, x2: 20, y2: 16 }), h("circle", { cx: 15, cy: 16, r: 2.2 })); },
+  back: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a), h("path", { d: "M15 18l-6-6 6-6" })); },
+  refresh: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a), h("path", { d: "M21 12a9 9 0 1 1-3-6.7L21 8" }), h("path", { d: "M21 3v5h-5" })); },
+  search: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a), h("circle", { cx: 11, cy: 11, r: 7 }), h("line", { x1: 21, y1: 21, x2: 16.65, y2: 16.65 })); },
+  sun: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a), h("circle", { cx: 12, cy: 12, r: 4 }), h("path", { d: "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" })); },
+  moon: function (a) { return h("svg", Object.assign({ viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "strokeWidth": 2 }, a), h("path", { d: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" })); },
+};
+function Icon(p) { const f = ICONS[p.name] || ICONS.grid; return f({ width: p.size || 18, height: p.size || 18, className: p.className }); }
+
+// ---- small components ----
+function Spinner() { return h("div", { className: "mc-spin" }); }
+function Empty(p) { p = p || {}; return h("div", { className: "mc-empty" }, p.children || "Nothing here yet."); }
+function ErrBox(p) { return h("div", { className: "mc-err" }, str(p.error && p.error.message ? p.error.message : p.error)); }
+function Pill(p) { return h("span", { className: cn("pill", p.kind || "muted") }, h("span", { className: "d" }), p.children); }
+function Stat(p) { return h("div", { className: "mc-stat" }, h("div", { className: cn("v", p.vclass) }, str(p.v)), h("div", { className: "k" }, p.k)); }
+function Section(p) {
+  var kids = Array.prototype.slice.call(arguments, 1);
+  return h("div", { className: "mc-section" }, p.title ? h("h3", null, p.title) : null, kids.length === 1 ? kids[0] : kids);
+}
+function BackBtn(p) { return h("button", { className: "mc-back", onClick: p.onClick }, h(Icon, { name: "back", size: 18 }), p.children || "Back"); }
+function Field(p) {
+  const mono = p.mono;
+  return h("div", { className: "row" },
+    h("span", { className: "key" }, p.k),
+    h("span", { className: "ty" }, p.ty || ""),
+    mono ? h("span", { className: "val mono" }, str(p.v)) : h("span", { className: "val" }, str(p.v)));
+}
+// recursive config tree (read-only)
+function TreeNode(p) {
+  const k = p.k, v = p.v;
+  const isObj = v && typeof v === "object" && !Array.isArray(v);
+  const [open, setOpen] = useS(p.depth != null && p.depth < 1);
+  if (isObj) {
+    const keys = Object.keys(v);
+    const visible = !p.filter || keys.some(function (kk) { return (k + "." + kk).toLowerCase().indexOf(p.filter) >= 0 || kk.toLowerCase().indexOf(p.filter) >= 0; })
+      || keys.length === 0;
+    if (p.filter && !visible && !JSON.stringify(v).toLowerCase().includes(p.filter)) return null;
+    return h("div", { className: "node" },
+      h("div", { className: "row" },
+        h("span", { className: "tw", onClick: function () { setOpen(!open); } }, open ? "▾" : "▸"),
+        h("span", { className: "key" }, k), h("span", { className: "ty" }, "{" + keys.length + "}")),
+      open ? h("div", { className: "children" },
+        keys.map(function (kk) { return h(TreeNode, { key: kk, k: kk, v: v[kk], depth: (p.depth || 0) + 1, filter: p.filter }); })) : null);
+  }
+  // leaf
+  if (p.filter && (k.toLowerCase().indexOf(p.filter) < 0 && str(v).toLowerCase().indexOf(p.filter) < 0)) return null;
+  return h("div", { className: "node" },
+    h("div", { className: "row" }, h("span", { className: "key" }, k), h("span", { className: "ty" }, "(" + typeof v + ")"), h("span", { className: "val" }, str(v))));
+}
+
+// =================== VIEWS ===================
+
+// ---- Overview ----
+function OverviewView(p) {
+  const s = useAsync(function () { return fetchJSON("/api/status"); }, [p.refreshTick]);
+  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  if (s.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (s.error) return ErrBox({ error: s.error });
+  const d = s.data || {};
+  const gk = gatewayKind(d);
+  const platforms = d.gateway_platforms || {};
+  const platList = Object.keys(platforms).map(function (k) {
+    const v = platforms[k] || {};
+    const ok = v.connected !== false && v.state !== "disconnected";
+    return { k: k, ok: ok, state: v.state || (ok ? "connected" : "offline") };
+  });
+  return h("div", null,
+    Section({ title: "Runtime" },
+      h("div", { className: "mc-stats" },
+        Stat({ k: "Hermes version", v: d.version }),
+        Stat({ k: "Gateway", v: gk.label, vclass: gk.kind }),
+        Stat({ k: "Active agents", v: fmt(d.active_agents) }),
+        Stat({ k: "Active sessions", v: fmt(d.active_sessions) }),
+        Stat({ k: "Gateway busy", v: d.gateway_busy ? "yes" : "no", vclass: d.gateway_busy ? "warn" : "good" }),
+        Stat({ k: "Drainable", v: d.gateway_drainable ? "yes" : "no" }))),
+    Section({ title: "Update" },
+      h("div", { className: "mc-stats" },
+        Stat({ k: "Latest version", v: d.latest_config_version || "-" }),
+        Stat({ k: "Can update", v: d.can_update_hermes ? "yes" : "no", vclass: d.can_update_hermes ? "warn" : "good" }))),
+    Section({ title: "Connected platforms (" + platList.length + ")" },
+      platList.length ? h("div", { className: "mc-stats" }, platList.map(function (pl) {
+        return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 15 } }, pl.k),
+          h("div", { className: "k" }, Pill({ kind: pillKind(pl.ok), children: pl.state })));
+      })) : Empty({ children: "No platforms connected." })),
+    cfg.data ? Section({ title: "Quick config highlights" },
+      h("div", { className: "mc-def" },
+        h("dt", null, "Default model"), h("dd", { className: "mono" }, str(cfg.data.model)),
+        h("dt", null, "Max live sessions"), h("dd", null, str(cfg.data.max_live_sessions)),
+        h("dt", null, "Memory"), h("dd", null, cfg.data.memory && cfg.data.memory.memory_enabled ? "enabled" : "disabled"),
+        h("dt", null, "Tirith security"), h("dd", null, (cfg.data.security && cfg.data.security.tirith_enabled) ? "enabled" : "disabled"),
+        h("dt", null, "Plugins"), h("dd", null, (cfg.data.plugins && cfg.data.plugins.enabled && cfg.data.plugins.enabled.length) ? cfg.data.plugins.enabled.join(', ') : "none"))) : null);
+}
+
+// ---- Models & Providers ----
+function ModelsView(p) {
+  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  if (cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (cfg.error) return ErrBox({ error: cfg.error });
+  const c = cfg.data || {};
+  const prov = c.providers || {};
+  const fb = c.fallback_providers || [];
+  const del = c.delegation || {};
+  const custom = c.custom_providers || [];
+  const provRows = Object.keys(prov).map(function (k) {
+    const v = prov[k] || {};
+    return { name: k, base: v.base_url || "-", models: (v.models || []).length };
+  });
+  return h("div", null,
+    Section({ title: "Default model" }, h("div", { className: "mc-def" },
+      h("dt", null, "model"), h("dd", { className: "mono" }, str(c.model)),
+      h("dt", null, "MoA preset"), h("dd", null, str((c.moa && c.moa.active_preset) || "-")))),
+    Section({ title: "Providers (" + provRows.length + ")" },
+      provRows.length ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Base URL"), h("th", null, "Models"))),
+        h("tbody", null, provRows.map(function (r) {
+          return h("tr", { key: r.name }, h("td", null, h("span", { className: "mono" }, r.name)), h("td", { className: "mono" }, r.base), h("td", null, String(r.models)));
+        }))) : Empty()),
+    Section({ title: "Fallback providers" }, fb.length ? h("div", { className: "mc-stats" }, fb.map(function (f) {
+      return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 14 } }, str(f.provider || f)));
+    })) : Empty({ children: "None configured." }) ),
+    Section({ title: "Delegation" }, h("div", { className: "mc-def" },
+      h("dt", null, "model"), h("dd", { className: "mono" }, str(del.model)),
+      h("dt", null, "provider"), h("dd", { className: "mono" }, str(del.provider)),
+      h("dt", null, "base_url"), h("dd", { className: "mono" }, str(del.base_url)),
+      h("dt", null, "max children"), h("dd", null, str(del.max_concurrent_children)))),
+    Section({ title: "Custom providers (" + custom.length + ")" },
+      custom.length ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "API mode"), h("th", null, "Base URL"))),
+        h("tbody", null, custom.map(function (cp, i) {
+          return h("tr", { key: i }, h("td", { className: "mono" }, str(cp.name)), h("td", null, str(cp.api_mode)), h("td", { className: "mono" }, str(cp.base_url)));
+        }))) : Empty()));
+}
+
+// ---- Connections / Platforms ----
+function ConnectionsView(p) {
+  const s = useAsync(function () { return fetchJSON("/api/status"); }, [p.refreshTick]);
+  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  if (s.loading || cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (s.error) return ErrBox({ error: s.error });
+  if (cfg.error) return ErrBox({ error: cfg.error });
+  const d = s.data || {};
+  const platforms = d.gateway_platforms || {};
+  const rows = Object.keys(platforms).map(function (k) {
+    const v = platforms[k] || {};
+    const ok = v.connected !== false && v.state !== "disconnected";
+    return { name: k, state: v.state || (ok ? "connected" : "offline"), ok: ok };
+  });
+  const mcp = (cfg.data && cfg.data.mcp_servers) || {};
+  const mcpRows = Object.keys(mcp).map(function (k) { return { name: k, enabled: (mcp[k] || {}).enabled !== false }; });
+  const pts = (cfg.data && cfg.data.platforms) || {};
+  const ptRows = Object.keys(pts).map(function (k) { return { name: k, enabled: (pts[k] || {}).enabled !== false }; });
+  return h("div", null,
+    Section({ title: "Gateway platforms (" + rows.length + ")" },
+      rows.length ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null, h("th", null, "Platform"), h("th", null, "State"))),
+        h("tbody", null, rows.map(function (r) {
+          return h("tr", { key: r.name }, h("td", { className: "mono" }, r.name),
+            h("td", null, Pill({ kind: pillKind(r.ok), children: r.state })));
+        }))) : Empty({ children: "No platforms connected." })),
+    Section({ title: "Enabled platform connectors" },
+      ptRows.length ? h("div", { className: "mc-stats" }, ptRows.map(function (r) {
+        return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 14 } }, r.name),
+          h("div", { className: "k" }, Pill({ kind: r.enabled ? "good" : "muted", children: r.enabled ? "enabled" : "disabled" })));
+      })) : Empty()),
+    Section({ title: "MCP servers (" + mcpRows.length + ")" },
+      mcpRows.length ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null, h("th", null, "Server"), h("th", null, "Status"))),
+        h("tbody", null, mcpRows.map(function (r) {
+          return h("tr", { key: r.name }, h("td", { className: "mono" }, r.name),
+            h("td", null, Pill({ kind: r.enabled ? "good" : "muted", children: r.enabled ? "enabled" : "disabled" })));
+        }))) : Empty()));
+}
+
+// ---- Scheduling & Cron ----
+function CronView(p) {
+  const jobs = useAsync(function () { return fetchJSON("/api/cron/jobs"); }, [p.refreshTick]);
+  const [sel, setSel] = useS(null);
+  if (jobs.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (jobs.error) return ErrBox({ error: jobs.error });
+  const list = jobs.data || [];
+  const active = list.filter(function (j) { return j.enabled && !j.paused_at; });
+  const paused = list.filter(function (j) { return !j.enabled || j.paused_at; });
+  const selJob = sel ? list.filter(function (j) { return j.id === sel; })[0] : null;
+  const Card = function (j) { return h("div", { className: cn("mc-card", sel === j.id && "sel"), onClick: function () { setSel(j.id); } },
+    h("div", { className: "ttl" }, j.name, Pill({ kind: (j.enabled && !j.paused_at) ? "good" : "warn", children: j.paused_at ? "paused" : (j.enabled ? "enabled" : "disabled") })),
+    h("div", { className: "meta" }, (j.schedule_display || j.schedule || "-") + "  ·  " + (j.model || "default model") )); };
+  return h("div", null,
+    Section({ title: "Summary" }, h("div", { className: "mc-stats" },
+      Stat({ k: "Total jobs", v: list.length }),
+      Stat({ k: "Active", v: active.length, vclass: "good" }),
+      Stat({ k: "Paused/disabled", v: paused.length, vclass: "warn" }))),
+    h("div", { className: "mc-split" },
+      h("div", { className: "mc-list" },
+        active.map(function (j) { return Card(j); }),
+        paused.map(function (j) { return Card(j); }),
+        list.length === 0 ? Empty() : null),
+      h("div", { className: "mc-detail-pane" }, selJob ? h("div", null,
+        h("h3", { style: { marginTop: 0 } }, selJob.name),
+        h("div", { className: "mc-def" },
+          h("dt", null, "ID"), h("dd", { className: "mono" }, selJob.id),
+          h("dt", null, "Schedule"), h("dd", { className: "mono" }, selJob.schedule_display || selJob.schedule),
+          h("dt", null, "Model"), h("dd", { className: "mono" }, selJob.model || "-"),
+          h("dt", null, "Provider"), h("dd", { className: "mono" }, selJob.provider || "-"),
+          h("dt", null, "Skills"), h("dd", null, (selJob.skills || []).join(", ") || "-"),
+          h("dt", null, "State"), h("dd", null, Pill({ kind: (selJob.enabled && !selJob.paused_at) ? "good" : "warn", children: selJob.paused_at ? "paused" : (selJob.enabled ? "enabled" : "disabled") })),
+          h("dt", null, "Paused reason"), h("dd", null, selJob.paused_reason || "-")),
+        h("div", { style: { marginTop: 14 } }, h("div", { className: "mc-muted", style: { fontSize: 12, marginBottom: 6 } }, "Prompt")),
+        h("pre", { style: { whiteSpace: "pre-wrap", background: "#0a0d13", padding: 10, borderRadius: 8, fontSize: 12, margin: 0 } }, selJob.prompt || "-")) : Empty())));
+}
+
+// ---- Security & Privacy ----
+function SecurityView(p) {
+  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  if (cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (cfg.error) return ErrBox({ error: cfg.error });
+  const c = cfg.data || {};
+  const sec = c.security || {};
+  const priv = c.privacy || {};
+  const appr = c.approvals || {};
+  const dash = c.dashboard || {};
+  const net = c.network || {};
+  return h("div", null,
+    Section({ title: "Security" }, h("div", { className: "mc-def" },
+      h("dt", null, "Allow private URLs"), h("dd", null, Pill({ kind: pillKind(sec.allow_private_urls), children: str(sec.allow_private_urls) })),
+      h("dt", null, "Redact secrets"), h("dd", null, Pill({ kind: pillKind(sec.redact_secrets), children: str(sec.redact_secrets) })),
+      h("dt", null, "Tirith enabled"), h("dd", null, Pill({ kind: pillKind(sec.tirith_enabled), children: str(sec.tirith_enabled) })),
+      h("dt", null, "Tirith fail-open"), h("dd", null, str(sec.tirith_fail_open)),
+      h("dt", null, "Lazy installs"), h("dd", null, str(sec.allow_lazy_installs)))),
+    Section({ title: "Privacy" }, h("div", { className: "mc-def" },
+      h("dt", null, "Redact PII"), h("dd", null, Pill({ kind: pillKind(priv.redact_pii), children: str(priv.redact_pii) })))),
+    Section({ title: "Approvals" }, h("div", { className: "mc-def" },
+      h("dt", null, "Mode"), h("dd", null, h("span", { className: "mono" }, str(appr.mode))),
+      h("dt", null, "Timeout (s)"), h("dd", null, str(appr.timeout)),
+      h("dt", null, "Cron mode"), h("dd", null, str(appr.cron_mode)),
+      h("dt", null, "MCP reload confirm"), h("dd", null, str(appr.mcp_reload_confirm)),
+      h("dt", null, "Destructive slash confirm"), h("dd", null, str(appr.destructive_slash_confirm)))),
+    Section({ title: "Dashboard auth" }, h("div", { className: "mc-def" },
+      h("dt", null, "Basic auth"), h("dd", null, str(dash.basic_auth)),
+      h("dt", null, "OAuth"), h("dd", null, str(dash.oauth)),
+      h("dt", null, "Drain auth"), h("dd", null, str(dash.drain_auth)),
+      h("dt", null, "Public URL"), h("dd", null, str(dash.public_url)))),
+    Section({ title: "Network" }, h("div", { className: "mc-def" },
+      h("dt", null, "Force IPv4"), h("dd", null, str(net.force_ipv4)))),
+    Section({ title: "Command allowlist" },
+      (c.command_allowlist || []).length ? h("div", { className: "mc-stats" }, c.command_allowlist.map(function (x) {
+        return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 12 } }, str(x)));
+      })) : Empty({ children: "Empty - all commands allowed." })));
+}
+
+// ---- Memory & Context ----
+function MemoryView(p) {
+  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  if (cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (cfg.error) return ErrBox({ error: cfg.error });
+  const c = cfg.data || {};
+  const mem = c.memory || {};
+  const ctx = c.context || {};
+  const comp = c.compression || {};
+  const chk = c.checkpoints || {};
+  return h("div", null,
+    Section({ title: "Memory" }, h("div", { className: "mc-def" },
+      h("dt", null, "Memory enabled"), h("dd", null, Pill({ kind: pillKind(mem.memory_enabled), children: str(mem.memory_enabled) })),
+      h("dt", null, "User profile"), h("dd", null, str(mem.user_profile_enabled)),
+      h("dt", null, "Write approval"), h("dd", null, str(mem.write_approval)),
+      h("dt", null, "Memory char limit"), h("dd", null, str(mem.memory_char_limit)),
+      h("dt", null, "User char limit"), h("dd", null, str(mem.user_char_limit)),
+      h("dt", null, "Flush min turns"), h("dd", null, str(mem.flush_min_turns)))),
+    Section({ title: "Context" }, h("div", { className: "mc-def" },
+      h("dt", null, "Engine"), h("dd", null, h("span", { className: "mono" }, str(ctx.engine))),
+      h("dt", null, "Context file max chars"), h("dd", null, str(c.context_file_max_chars)),
+      h("dt", null, "File read max chars"), h("dd", null, str(c.file_read_max_chars)),
+      h("dt", null, "Paste collapse threshold"), h("dd", null, str(c.paste_collapse_threshold)))),
+    Section({ title: "Compression" }, h("div", { className: "mc-def" },
+      h("dt", null, "Enabled"), h("dd", null, Pill({ kind: pillKind(comp.enabled), children: str(comp.enabled) })),
+      h("dt", null, "Threshold"), h("dd", null, str(comp.threshold)),
+      h("dt", null, "Target ratio"), h("dd", null, str(comp.target_ratio)))),
+    Section({ title: "Checkpoints" }, h("div", { className: "mc-def" },
+      h("dt", null, "Enabled"), h("dd", null, Pill({ kind: pillKind(chk.enabled), children: str(chk.enabled) })),
+      h("dt", null, "Max snapshots"), h("dd", null, str(chk.max_snapshots)),
+      h("dt", null, "Retention (days)"), h("dd", null, str(chk.retention_days)))));
+}
+
+// ---- Tools & MCP ----
+function ToolsView(p) {
+  const ts = useAsync(function () { return fetchJSON("/api/tools/toolsets"); }, [p.refreshTick]);
+  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  const [q, setQ] = useS("");
+  if (ts.loading || cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (ts.error) return ErrBox({ error: ts.error });
+  const list = (ts.data || []).filter(function (t) {
+    if (!q.trim()) return true;
+    return (t.label || t.name || "").toLowerCase().indexOf(q.toLowerCase()) >= 0;
+  });
+  const tool = (cfg.data && cfg.data.tools) || {};
+  const ce = (cfg.data && cfg.data.code_execution) || {};
+  return h("div", null,
+    Section({ title: "Global tool settings" }, h("div", { className: "mc-def" },
+      h("dt", null, "Tool search"), h("dd", null, str(tool.tool_search)),
+      h("dt", null, "Code execution mode"), h("dd", null, h("span", { className: "mono" }, str(ce.mode))),
+      h("dt", null, "Code exec timeout"), h("dd", null, str(ce.timeout)),
+      h("dt", null, "Code exec max tool calls"), h("dd", null, str(ce.max_tool_calls)))),
+    Section({ title: "Toolsets (" + (ts.data || []).length + ")" },
+      h("div", { className: "mc-toolbar" }, h("input", { className: "mc-input", placeholder: "Filter toolsets...", value: q, onChange: function (e) { setQ(e.target.value); } })),
+      list.length ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Platform"), h("th", null, "Tools"), h("th", null, "Status"))),
+        h("tbody", null, list.map(function (t) {
+          const status = t.configured ? "configured" : (t.available ? "available" : "unavailable");
+          const kind = t.configured ? "good" : (t.available ? "info" : "muted");
+          return h("tr", { key: t.name },
+            h("td", null, h("div", null, h("strong", null, t.label || t.name)), t.description ? h("div", { className: "mc-sub" }, t.description) : null),
+            h("td", { className: "mono" }, str(t.platform)),
+            h("td", null, String((t.tools || []).length)),
+            h("td", null, Pill({ kind: kind, children: status })));
+        }))) : Empty()));
+}
+
+// ---- Skills ----
+function SkillsView(p) {
+  const sk = useAsync(function () { return fetchJSON("/api/skills"); }, [p.refreshTick]);
+  const [q, setQ] = useS("");
+  const [cat, setCat] = useS("all");
+  if (sk.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (sk.error) return ErrBox({ error: sk.error });
+  const all = sk.data || [];
+  const cats = ["all"].concat(Object.keys(all.reduce(function (m, s) { if (s.category) m[s.category] = 1; return m; }, {})));
+  const list = all.filter(function (s) {
+    if (cat !== "all" && s.category !== cat) return false;
+    if (q.trim() && (s.name + " " + (s.description || "")).toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
+    return true;
+  });
+  return h("div", null,
+    Section({ title: "Skills (" + all.length + " total, " + list.length + " shown)" },
+      h("div", { className: "mc-toolbar" },
+        h("input", { className: "mc-input", placeholder: "Search skills...", value: q, onChange: function (e) { setQ(e.target.value); } }),
+        h("select", { className: "mc-input", value: cat, onChange: function (e) { setCat(e.target.value); } },
+          cats.map(function (c) { return h("option", { key: c, value: c }, c); }))),
+      list.length ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Category"), h("th", null, "Enabled"), h("th", null, "Usage"), h("th", null, "Provenance"))),
+        h("tbody", null, list.map(function (s) {
+          return h("tr", { key: s.name },
+            h("td", null, h("div", null, h("strong", null, s.name), s.description ? h("div", { className: "mc-sub" }, s.description) : null)),
+            h("td", null, h("span", { className: "mono" }, str(s.category))),
+            h("td", null, Pill({ kind: s.enabled ? "good" : "muted", children: s.enabled ? "on" : "off" })),
+            h("td", null, str(s.usage)),
+            h("td", null, str(s.provenance)));
+        }))) : Empty()));
+}
+
+// ---- Sessions ----
+function SessionsView(p) {
+  const stats = useAsync(function () { return fetchJSON("/api/sessions/stats"); }, [p.refreshTick]);
+  const list = useAsync(function () { return fetchJSON("/api/sessions?limit=60&order=recent&exclude_sources=cron"); }, [p.refreshTick]);
+  const [q, setQ] = useS("");
+  let rows = list.data ? (list.data.sessions || list.data) : [];
+  if (q.trim()) rows = rows.filter(function (s) { return (s.name || s.id || "").toLowerCase().indexOf(q.toLowerCase()) >= 0; });
+  const { sorted, sortKey, sortDir, onSort } = useSort(rows, "id");
+  if (stats.loading || list.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (stats.error) return ErrBox({ error: stats.error });
+  if (list.error) return ErrBox({ error: list.error });
+  const st = stats.data || {};
+  const Arrow = function (k) { return sortKey === k ? (sortDir === 1 ? " " : " ") : ""; };
+  return h("div", null,
+    Section({ title: "Statistics" }, h("div", { className: "mc-stats" },
+      Stat({ k: "Total", v: fmt(st.total) }),
+      Stat({ k: "Active store", v: fmt(st.active_store) }),
+      Stat({ k: "Archived", v: fmt(st.archived) }),
+      Stat({ k: "Messages", v: fmt(st.messages) }))),
+    Section({ title: "Recent sessions (" + rows.length + ")" },
+      h("div", { className: "mc-toolbar" }, h("input", { className: "mc-input", placeholder: "Search sessions...", value: q, onChange: function (e) { setQ(e.target.value); } })),
+      sorted.length ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null,
+          h("th", { onClick: function () { onSort("id"); } }, "ID" + Arrow("id")),
+          h("th", { onClick: function () { onSort("source"); } }, "Source" + Arrow("source")),
+          h("th", { onClick: function () { onSort("started_at"); } }, "Started" + Arrow("started_at")),
+          h("th", null, "Messages"))),
+        h("tbody", null, sorted.map(function (s) {
+          return h("tr", { key: s.id, onClick: function () { p.nav({ name: "session", id: s.id }); }, style: { cursor: "pointer" } },
+            h("td", { className: "mono" }, String(s.id).slice(0, 12)),
+            h("td", null, str(s.source)),
+            h("td", null, timeAgo((s.started_at || 0) * 1000)),
+            h("td", null, str(s.message_count != null ? s.message_count : (s.messages ? s.messages.length : "-"))));
+        }))) : Empty()));
+}
+
+// ---- Logs ----
+const LOG_FILES = ["hermes.log", "gateway.log", "agent.log", "web.log", "cron.log", "mcp.log"];
+const LOG_LEVELS = ["ALL", "DEBUG", "INFO", "WARNING", "ERROR"];
+function lineClass(l) { if (/error/i.test(l)) return "ln err"; if (/warn/i.test(l)) return "ln warn"; if (/info/i.test(l)) return "ln info"; return ""; }
+function LogsView(p) {
+  const [file, setFile] = useS("hermes.log");
+  const [level, setLevel] = useS("ALL");
+  const [q, setQ] = useS("");
+  const logs = useAsync(function () {
+    return fetchJSON("/api/logs?log=" + encodeURIComponent(file) + "&level=" + level + "&limit=2000");
+  }, [file, level, p.refreshTick]);
+  if (logs.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (logs.error) return ErrBox({ error: logs.error });
+  const raw = logs.data && logs.data.lines ? logs.data.lines : (Array.isArray(logs.data) ? logs.data : []);
+  const lines = raw.filter(function (l) {
+    if (q.trim() && l.toLowerCase().indexOf(q.toLowerCase()) < 0) return false;
+    return true;
+  });
+  return h("div", null,
+    h("div", { className: "mc-toolbar" },
+      h("select", { className: "mc-input", value: file, onChange: function (e) { setFile(e.target.value); } },
+        LOG_FILES.map(function (f) { return h("option", { key: f, value: f }, f); })),
+      h("select", { className: "mc-input", value: level, onChange: function (e) { setLevel(e.target.value); } },
+        LOG_LEVELS.map(function (l) { return h("option", { key: l, value: l }, l); })),
+      h("input", { className: "mc-input", placeholder: "Filter lines...", value: q, onChange: function (e) { setQ(e.target.value); } })),
+    lines.length ? h("div", { className: "mc-logs" }, lines.map(function (l, i) { return h("div", { key: i, className: lineClass(l) }, l); }))
+      : Empty({ children: "No log lines match." }));
+}
+
+// ---- Config tree (read-only) ----
+// Known enum options (documented in .env / config.yaml comments).
+// Keys not listed here render as free-text (no invented allowed-values).
+const ENUM = {
+  "terminal.backend": ["local", "docker", "modal", "ssh"],
+  "display.interface": ["cli", "tui", "web", "desktop"],
+  "approvals.mode": ["manual", "auto", "deny"],
+  "logging.level": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+  "streaming.transport": ["auto", "sse", "ws"],
+  "web.backend": ["parallel", "sequential"],
+};
+// immutably set a nested path inside a cloned object
+function setPath(obj, pathArr, value) {
+  const root = Array.isArray(obj) ? obj.slice() : Object.assign({}, obj);
+  let cur = root;
+  for (let i = 0; i < pathArr.length - 1; i++) {
+    const k = pathArr[i];
+    const child = cur[k];
+    cur[k] = (child && typeof child === "object") ? (Array.isArray(child) ? child.slice() : Object.assign({}, child)) : {};
+    cur = cur[k];
+  }
+  cur[pathArr[pathArr.length - 1]] = value;
+  return root;
+}
+function typeOf(v) {
+  if (v === null || v === undefined) return "null";
+  if (Array.isArray(v)) return "array";
+  return typeof v;
+}
+// one editable row for a leaf value
+function ConfigField(p) {
+  const path = p.path, key = p.keyName || p.key, value = p.value, draft = p.draft, setDraft = p.setDraft;
+  const ty = typeOf(value);
+  const enumOpts = ENUM[path.join(".")];
+  const set = function (nv) { setDraft(function (d) { return setPath(d, path, nv); }); };
+  const label = h("label", { className: "cfg-key", title: path.join(".") }, key);
+  let control;
+  if (ty === "boolean") {
+    control = h("button", {
+      className: "cfg-toggle" + (value ? " on" : ""),
+      onClick: function () { set(!value); }
+    }, h("span", { className: "knob" }));
+  } else if (ty === "number") {
+    control = h("input", {
+      className: "mc-input cfg-input", type: "number",
+      value: value == null ? "" : value,
+      onChange: function (e) { const n = e.target.value === "" ? null : Number(e.target.value); set(n); }
+    });
+  } else if (enumOpts) {
+    control = h("select", {
+      className: "mc-input cfg-input", value: value == null ? "" : String(value),
+      onChange: function (e) { set(e.target.value); }
+    }, enumOpts.concat(value && enumOpts.indexOf(String(value)) < 0 ? [String(value)] : []).map(function (o) {
+      return h("option", { key: o, value: o }, o);
+    }));
+  } else if (ty === "array") {
+    control = h("textarea", {
+      className: "mc-input cfg-area", rows: 3,
+      value: (value || []).join("\n"),
+      onChange: function (e) { set(e.target.value.split("\n").map(function (x) { return x.trim(); }).filter(function (x) { return x.length; })); }
+    });
+  } else {
+    control = h("input", {
+      className: "mc-input cfg-input", type: "text",
+      value: value == null ? "" : String(value),
+      onChange: function (e) { set(e.target.value); }
+    });
+  }
+  return h("div", { className: "cfg-row" }, label, control,
+    h("span", { className: "cfg-type" }, "(" + ty + (enumOpts ? " enum" : "") + ")"));
+}
+// recursively render an editable sub-tree (object/array of objects)
+function ConfigEditor(p) {
+  const obj = p.value, path = p.path, draft = p.draft, setDraft = p.setDraft;
+  if (Array.isArray(obj)) {
+    return h("div", { className: "cfg-obj" }, obj.map(function (item, i) {
+      if (item && typeof item === "object") {
+        return h("div", { key: i, className: "cfg-nested" },
+          h("div", { className: "cfg-head" }, path.join(".") + "[" + i + "]"),
+          h(ConfigEditor, { value: item, path: path.concat(String(i)), draft: draft, setDraft: setDraft }));
+      }
+      return h(ConfigField, { key: i, path: path.concat(String(i)), keyName: "[" + i + "]", value: item, draft: draft, setDraft: setDraft });
+    }));
+  }
+  const keys = Object.keys(obj || {});
+  return h("div", { className: "cfg-obj" }, keys.map(function (k) {
+    const v = obj[k];
+    if (v && typeof v === "object") {
+      return h("div", { key: k, className: "cfg-nested" },
+        h("div", { className: "cfg-head" }, path.concat(k).join(".")),
+        h(ConfigEditor, { value: v, path: path.concat(k), draft: draft, setDraft: setDraft }));
+    }
+    return h(ConfigField, { key: k, path: path.concat(k), keyName: k, value: v, draft: draft, setDraft: setDraft });
+  }));
+}
+function ConfigView(p) {
+  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  const [q, setQ] = useS("");
+  const [draft, setDraft] = useS(null);
+  const [saving, setSaving] = useS(false);
+  const [saveErr, setSaveErr] = useS(null);
+  if (cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (cfg.error) return ErrBox({ error: cfg.error });
+  const data = cfg.data || {};
+  if (draft) {
+    const onSave = function () {
+      setSaving(true); setSaveErr(null);
+      fetchJSON("/api/config", { method: "PUT", body: JSON.stringify({ config: draft }) })
+        .then(function () {
+          setSaving(false); setDraft(null);
+          cfg.reload && cfg.reload();
+        })
+        .catch(function (e) {
+          setSaving(false); setSaveErr(e);
+        });
+    };
+    const onCancel = function () { setDraft(null); setSaveErr(null); };
+    return h("div", null,
+      h("div", { className: "mc-toolbar" },
+        h("button", { className: "mc-btn primary", disabled: saving, onClick: onSave }, saving ? "Saving..." : "Save changes"),
+        h("button", { className: "mc-btn", disabled: saving, onClick: onCancel }, "Cancel"),
+        h("span", { className: "mc-muted" }, "Editing full config — Save sends PUT /api/config")),
+      saveErr ? h("div", { className: "mc-err", style: { marginBottom: 12 } }, String(saveErr.message || saveErr)) : null,
+      h("div", { className: "cfg-editor" },
+        h(ConfigEditor, { value: draft, path: [], draft: draft, setDraft: setDraft })));
+  }
+  const keys = Object.keys(data);
+  const filtered = q.trim() ? keys.filter(function (k) {
+    return k.toLowerCase().indexOf(q.trim().toLowerCase()) >= 0 || JSON.stringify(data[k]).toLowerCase().indexOf(q.trim().toLowerCase()) >= 0;
+  }) : keys;
+  return h("div", null,
+    h("div", { className: "mc-toolbar" },
+      h("input", { className: "mc-input", placeholder: "Search config keys...", value: q, onChange: function (e) { setQ(e.target.value); } }),
+      h("span", { className: "mc-muted" }, keys.length + " top-level keys"),
+      h("button", { className: "mc-btn primary", onClick: function () { setDraft(JSON.parse(JSON.stringify(data))); } }, "Edit")),
+    h("div", { className: "mc-tree" }, filtered.map(function (k) {
+      return h(TreeNode, { key: k, k: k, v: data[k], depth: 0, filter: q.trim().toLowerCase() });
+    })));
+}
+
+// =================== APP SHELL ===================
+const NAV = [
+  { id: "overview", label: "Overview", icon: "grid" },
+  { id: "models", label: "Models & Providers", icon: "chip" },
+  { id: "connections", label: "Connections", icon: "plug" },
+  { id: "cron", label: "Scheduling & Cron", icon: "clock" },
+  { id: "security", label: "Security & Privacy", icon: "shield" },
+  { id: "memory", label: "Memory & Context", icon: "brain" },
+  { id: "tools", label: "Tools & MCP", icon: "tools" },
+  { id: "skills", label: "Skills", icon: "spark" },
+  { id: "sessions", label: "Sessions", icon: "chat" },
+  { id: "logs", label: "Logs", icon: "file" },
+  { id: "config", label: "Config (tree)", icon: "sliders" },
+];
+const TITLES = { overview: "Overview", models: "Models & Providers", connections: "Connections / Platforms", cron: "Scheduling & Cron", security: "Security & Privacy", memory: "Memory & Context", tools: "Tools & MCP", skills: "Skills", sessions: "Sessions", logs: "Logs", config: "Configuration" };
+const VIEWS = { overview: OverviewView, models: ModelsView, connections: ConnectionsView, cron: CronView, security: SecurityView, memory: MemoryView, tools: ToolsView, skills: SkillsView, sessions: SessionsView, logs: LogsView, config: ConfigView };
+
+function Header(p) {
+  const s = useAsync(function () { return fetchJSON("/api/status"); }, [p.refreshTick]);
+  const gk = s.data ? gatewayKind(s.data) : { kind: "muted", label: "..." };
+  return h("div", { className: "mc-topbar" },
+    h("div", null, h("h2", null, TITLES[p.view] || "Mission Control"),
+      h("div", { className: "crumb" }, "Hermes Mission Control")),
+    h("div", { className: "spacer" }),
+    s.data ? h("span", { className: "pill " + gk.kind }, h("span", { className: "d" }), "gateway: " + gk.label) : null,
+    s.data ? h("span", { className: "pill muted" }, "v" + str(s.data.version)) : null,
+    h("button", { className: "mc-btn icon", title: "Toggle theme", onClick: p.onToggleTheme }, h(Icon, { name: p.theme === "dark" ? "sun" : "moon", size: 18 })),
+    h("button", { className: "mc-btn icon", title: "Refresh", onClick: p.onRefresh }, h(Icon, { name: "refresh", size: 18 })));
+}
+
+function App() {
+  const [view, setView] = useS({ name: "overview" });
+  const [refreshTick, setRefreshTick] = useS(0);
+  const [theme, setTheme] = useS((typeof localStorage !== "undefined" && localStorage.getItem("mc-theme")) || "dark");
+  const nav = useC(function (v) { setView(v); window.scrollTo(0, 0); }, []);
+  const onBack = useC(function () { setView({ name: "overview" }); }, []);
+  const onRefresh = useC(function () { setRefreshTick(function (t) { return t + 1; }); }, []);
+  const onToggleTheme = useC(function () {
+    setTheme(function (t) {
+      const nt = t === "dark" ? "light" : "dark";
+      try { localStorage.setItem("mc-theme", nt); } catch (e) {}
+      return nt;
+    });
+  }, []);
+  const rp = { refreshTick: refreshTick };
+  const active = view.name === "session" ? "sessions" : view.name;
+  const Body = VIEWS[active] || OverviewView;
+  return h("div", { className: "mc-shell", "data-theme": theme },
+    h("div", { className: "mc-rail" },
+      h("div", { className: "mc-brand" }, h("div", { className: "mc-logo" }, "H"),
+        h("div", null, h("h1", null, "Mission Control"), h("div", { className: "sub" }, "Hermes Agent"))),
+      h("div", { className: "mc-nav" }, NAV.map(function (n) {
+        return h("button", { key: n.id, className: (active === n.id ? "active" : ""), onClick: function () { nav({ name: n.id }); } },
+          h(Icon, { name: n.icon }), n.label);
+      })),
+      h("div", { className: "mc-rail-foot" }, h("div", null, h("span", { className: "dot" }), "9120 · proxy to 9119"),
+        h("div", { style: { marginTop: 4 } }, "read-only · Stage 1"))),
+    h("div", { className: "mc-main" },
+      h(Header, { view: active, onRefresh: onRefresh, onToggleTheme: onToggleTheme, theme: theme }),
+      h("div", { className: "mc-body" }, view.name === "session"
+        ? h(SessionDetail, Object.assign({ onBack: onBack, id: view.id }, rp))
+        : h(Body, Object.assign({ nav: nav, onBack: onBack }, rp)))));
+}
+
+function SessionDetail(p) {
+  const m = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id) + "/messages?limit=200"); }, [p.id]);
+  const meta = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id)); }, [p.id]);
+  return h("div", null,
+    BackBtn({ onClick: p.onBack }),
+    h("h2", { className: "mc-h", style: { marginTop: 0 } }, meta.data ? str(meta.data.name || p.id) : "Session"),
+    h("div", { className: "mc-sub" }, h("span", { className: "mc-id" }, p.id),
+      meta.data ? "  ·  " + str(meta.data.source || "cli") + "  ·  " + (meta.data.started_at ? timeAgo(meta.data.started_at * 1000) : "") : ""),
+    m.loading ? h("div", { className: "mc-center" }, Spinner())
+      : m.error ? ErrBox({ error: m.error })
+      : h("div", { className: "mc-chat" }, (m.data && m.data.messages ? m.data.messages : []).map(function (msg, i) {
+          const role = (msg.role || "assistant").toLowerCase();
+          return h("div", { key: i, className: cn("mc-msg", role === "user" ? "user" : "assistant") },
+            h("div", { className: "role" }, role), str(msg.content));
+        })));
+}
+
+// Error boundary so a throw shows the message instead of a blank page.
+class EB extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(e) { return { err: e }; }
+  componentDidCatch(e) { console.error("MissionControl view error:", e); }
+  render() {
+    if (this.state.err) {
+      return h("div", { className: "mc-err", style: { margin: 24, whiteSpace: "pre-wrap" } },
+        "View error:\n" + (this.state.err && this.state.err.stack ? this.state.err.stack : String(this.state.err)));
+    }
+    return this.props.children;
+  }
+}
+
+(function mount() {
+  const el = document.getElementById("mc-root");
+  if (!el) { console.error("MissionControl: #mc-root not found"); return; }
+  try {
+    ReactDOM.createRoot(el).render(h(EB, null, h(App)));
+  } catch (e) {
+    console.error("MissionControl mount failed:", e);
+    el.innerHTML = '<div class="mc-err" style="margin:24px;white-space:pre-wrap">Mount error:\n' + (e && e.stack ? e.stack : e) + "</div>";
+  }
+})();
+</script>
+</body>
+</html>
