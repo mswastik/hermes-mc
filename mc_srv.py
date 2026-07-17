@@ -71,6 +71,16 @@ class H(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/vendor/"):
             return super().do_GET()
+        if self.path == "/mc-token" or self.path.startswith("/mc-token"):
+            tok = get_token()
+            body = ('{"token": "%s"}' % tok).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/mission-control" or self.path.startswith("/mission-control"):
             return self._page()
         if self.path.startswith(PROXY):

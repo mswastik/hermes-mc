@@ -190,7 +190,7 @@
   .mc-logs{background:#0a0d13;border:1px solid var(--mc-border);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;max-height:560px;overflow-y:auto;line-height:1.6}
   .ln.err{color:var(--mc-bad)} .ln.warn{color:var(--mc-warn)} .ln.info{color:var(--mc-info)}
   /* ---- chat panel (resume / new session) ---- */
-  .mc-chatwrap{display:flex;flex-direction:column;height:calc(100vh - 150px);min-height:420px}
+  .mc-chatwrap{display:flex;flex-direction:column;height:90vh;min-height:420px}
   .mc-chatbar{display:flex;gap:8px;align-items:center;padding:8px 0}
   .mc-chatbar .mc-input{flex:1}
   .mc-chat-main{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:6px 2px}
@@ -222,7 +222,7 @@
   .mc-modpick .mc-select{display:inline-flex;align-items:center;gap:6px;cursor:pointer;max-width:320px}
   .mc-modprov{color:var(--mc-muted);font-size:11px}
   .mc-caret{font-size:9px;opacity:.7}
-  .mc-modlist{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:340px;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);padding:6px;max-height:360px;overflow-y:auto}
+  .mc-modlist{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:390px;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);padding:6px;max-height:360px;overflow-y:auto}
   .mc-modsearch{margin-bottom:6px;width:100%}
   .mc-modopt{display:flex;gap:6px;align-items:baseline;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;font-family:ui-monospace,Menlo,monospace}
   .mc-modopt:hover{background:var(--mc-panel-2)}
@@ -1159,8 +1159,18 @@ function wsToken() {
   } catch (e) {}
   return "";
 }
-function wsUrl() {
-  return "ws://127.0.0.1:9119/api/ws?token=" + encodeURIComponent(wsToken());
+// Resolve the token, fetching a fresh one from the proxy if the baked-in value is empty
+// (handles the case where the page was loaded before 9119 had a token ready).
+function resolveToken() {
+  const t = wsToken();
+  if (t) return Promise.resolve(t);
+  return fetch(BASE + "/mc-token", { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { return (j && j.token) || ""; })
+    .catch(function () { return ""; });
+}
+function wsUrl(tok) {
+  return "ws://127.0.0.1:9119/api/ws?token=" + encodeURIComponent(tok || wsToken());
 }
 const CONN_LABEL = { idle: "idle", connecting: "connecting…", connected: "connected", error: "disconnected" };
 // Searchable model picker: shows provider (muted) + model; same model id can
@@ -1211,6 +1221,7 @@ function ChatPanel(p) {
   const wsRef = React.useRef(null);
   const msgRef = React.useRef(null);
   const sidRef = React.useRef(p.sessionId || null);
+  const attachedRef = React.useRef(false);    // has this session been loaded into the gateway on the current ws?
   const pendingRef = React.useRef({});       // rid -> {resolve, reject}
 
   // ---- model selector ----
@@ -1231,6 +1242,21 @@ function ChatPanel(p) {
   }, []);
   React.useEffect(function () { reloadModels(); }, []);
   React.useEffect(function () { ensureConn().catch(function () {}); }, []);
+  // Load prior message history when resuming an existing session.
+  React.useEffect(function () {
+    if (!p.sessionId) return;
+    fetchJSON("/api/sessions/" + encodeURIComponent(p.sessionId) + "/messages?limit=200")
+      .then(function (j) {
+        const arr = (j && (j.messages || j)) || [];
+        const conv = arr
+          .filter(function (m) { return m && (m.role === "user" || m.role === "assistant"); })
+          .map(function (m) {
+            return { role: m.role, text: m.content || m.text || "", think: "", tools: [] };
+          });
+        if (conv.length) setMsgs(conv);
+      })
+      .catch(function () {});
+  }, []);
   function setModel(id) {
     const m = (models || []).find(function (x) { return (x.id || x.model) === id; });
     const payload = { scope: "main", model: id, provider: m ? (m.provider || m.prov) : null };
@@ -1244,23 +1270,26 @@ function ChatPanel(p) {
 
   const ensureConn = useC(function () {
     if (wsRef.current && wsRef.current.readyState === 1) return Promise.resolve();
-    return new Promise(function (resolve, reject) {
-      let ws;
-      try { ws = new WebSocket(wsUrl()); } catch (e) { reject(e); return; }
-      wsRef.current = ws;
-      setConnState("connecting");
-      ws.onmessage = function (ev) {
-        let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-        if (m.method === "event") {
-          handleEvent(m.params && m.params.type, (m.params && m.params.payload) || {});
-        } else if (m.id != null && pendingRef.current[m.id]) {
-          const cb = pendingRef.current[m.id]; delete pendingRef.current[m.id];
-          if (m.error) cb.reject(m.error); else cb.resolve(m.result);
-        }
-      };
-      ws.onopen = function () { setConnState("connected"); resolve(); };
-      ws.onerror = function () { setConnState("error"); setErr("WebSocket error (is 9119 up?)"); };
-      ws.onclose = function () { wsRef.current = null; setConnState("idle"); };
+    return resolveToken().then(function (tok) {
+      if (!tok) throw new Error("No session token available (is the 9119 dashboard running?)");
+      return new Promise(function (resolve, reject) {
+        let ws;
+        try { ws = new WebSocket(wsUrl(tok)); } catch (e) { reject(e); return; }
+        wsRef.current = ws;
+        setConnState("connecting");
+        ws.onmessage = function (ev) {
+          let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+          if (m.method === "event") {
+            handleEvent(m.params && m.params.type, (m.params && m.params.payload) || {});
+          } else if (m.id != null && pendingRef.current[m.id]) {
+            const cb = pendingRef.current[m.id]; delete pendingRef.current[m.id];
+            if (m.error) cb.reject(m.error); else cb.resolve(m.result);
+          }
+        };
+        ws.onopen = function () { setConnState("connected"); resolve(); };
+        ws.onerror = function () { setConnState("error"); setErr("WebSocket error (is 9119 up?)"); reject(new Error("ws error")); };
+        ws.onclose = function () { wsRef.current = null; attachedRef.current = false; setConnState("idle"); };
+      });
     });
   }, []);
 
@@ -1298,18 +1327,26 @@ function ChatPanel(p) {
 
   function send(text) {
     setErr(null);
-    const run = function (sid) {
+    const doSubmit = function (sid) {
       sidRef.current = sid;
+      attachedRef.current = true;
       rpc("prompt.submit", { session_id: sid, text: text }).catch(function (e) {
         setErr("submit failed: " + (e && (e.message || JSON.stringify(e)))); setBusy(false); setTyping(false);
       });
     };
     if (!sidRef.current) {
+      // New session: create it, then submit.
       rpc("session.create", { title: "Mission Control", source: "tui" })
-        .then(function (res) { run((res && res.session_id) || (res && res.id)); })
+        .then(function (res) { doSubmit((res && res.session_id) || (res && res.id)); })
         .catch(function (e) { setErr("session create failed: " + (e && (e.message || JSON.stringify(e)))); setBusy(false); });
+    } else if (!attachedRef.current) {
+      // Resuming an existing session: it must be loaded into the gateway first,
+      // otherwise prompt.submit fails with "session not found".
+      rpc("session.resume", { session_id: sidRef.current, cols: 100 })
+        .then(function (res) { doSubmit((res && res.session_id) || sidRef.current); })
+        .catch(function (e) { setErr("resume failed: " + (e && (e.message || JSON.stringify(e)))); setBusy(false); });
     } else {
-      run(sidRef.current);
+      doSubmit(sidRef.current);
     }
   }
   function onSubmit(e) {
