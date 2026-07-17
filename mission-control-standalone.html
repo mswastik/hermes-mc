@@ -52,7 +52,7 @@
   [data-theme="light"] .mc-empty{background:#fff;color:var(--mc-faint)}
   [data-theme="light"] .mc-err{background:#fde8e8;border-color:#f5c2c2;color:#b91c1c}
   [data-theme="light"] .mc-logs{background:#0b0e14;color:#d4dae4}
-  [data-theme="light"] pre{color:var(--mc-fg)}
+  [data-theme="light"] pre{color:#ddd}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--mc-bg);color:var(--mc-fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -87,7 +87,14 @@
   .mc-btn:hover{background:#222d3f}
   .mc-btn.primary{background:var(--mc-accent);color:#04121a;border-color:transparent;font-weight:600}
   .mc-btn.icon{padding:7px}
-  .mc-body{flex:1;overflow-y:auto;padding:20px}
+  .mc-btn.danger{background:#7f1d1d;border-color:#b91c1c;color:#fecaca;font-weight:600}
+  .mc-btn.danger:hover{background:#991b1b}
+  .mc-btn.sm{padding:4px 9px;font-size:12px}
+  /* ---- modal (delete confirm) ---- */
+  .mc-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:200}
+  .mc-modal{background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:12px;padding:20px;width:420px;max-width:92vw;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  .mc-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .mc-body{flex:1;overflow-y:auto;padding:0 15px 0 15px}
   .mc-section{margin-bottom:26px}
   .mc-section > h3{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--mc-faint);margin:0 0 12px}
   /* ---- stat grid ---- */
@@ -150,10 +157,12 @@
   .cfg-input{max-width:420px;width:100%}
   .cfg-area{width:100%;max-width:560px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
   .cfg-type{font-size:11px;color:var(--mc-faint);white-space:nowrap}
-  .cfg-toggle{width:42px;height:22px;border-radius:12px;background:var(--mc-border);border:0;position:relative;transition:.15s;flex:0 0 auto}
+  .cfg-toggle{width:50px;height:24px;border-radius:13px;background:var(--mc-border);border:0;position:relative;transition:.15s;flex:0 0 auto;cursor:pointer;display:inline-flex;align-items:center;padding:0 6px;box-sizing:border-box}
   .cfg-toggle.on{background:var(--mc-accent)}
-  .cfg-toggle .knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s}
-  .cfg-toggle.on .knob{left:22px}
+  .cfg-toggle .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  .cfg-toggle.on .knob{left:28px}
+  .cfg-toggle .t-label{position:absolute;right:7px;font-size:9px;font-weight:700;color:var(--mc-fg);letter-spacing:.5px;opacity:.55}
+  .cfg-toggle.on .t-label{left:7px;right:auto;color:#04121a;opacity:1}
   [data-theme="light"] .cfg-toggle{background:#c4cdda}
   [data-theme="light"] .cfg-toggle.on{background:var(--mc-accent)}
   /* ---- misc ---- */
@@ -169,17 +178,82 @@
   .mc-id{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--mc-muted)}
   .mc-muted{color:var(--mc-muted)}
   .mc-sub{color:var(--mc-faint);font-size:12.5px;margin:2px 0 0}
-  .mc-back{background:none;border:0;color:var(--mc-accent-2);display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:0;margin-bottom:12px}
+  .mc-back{background:none;border:0;color:var(--mc-accent-2);display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:0;margin-right:12px}
   .mc-bar{display:flex;align-items:flex-end;gap:3px;height:60px}
   .mc-bar .b{flex:1;background:linear-gradient(180deg,var(--mc-accent),#0e7490);border-radius:3px 3px 0 0;min-height:2px}
   .mc-bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--mc-faint)}
-  .mc-chat{max-height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+  .mc-chat{max-height:780px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
   .mc-msg{border-radius:10px;padding:10px 12px;font-size:13px;max-width:88%}
-  .mc-msg.user{background:#16263a;align-self:flex-end}
+  .mc-msg.user{background:#16263a;align-self:flex-end;color:#f8f8f8}
   .mc-msg.assistant{background:var(--mc-panel-2);align-self:flex-start;border:1px solid var(--mc-border)}
   .mc-msg .role{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--mc-faint);margin-bottom:4px}
   .mc-logs{background:#0a0d13;border:1px solid var(--mc-border);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;max-height:560px;overflow-y:auto;line-height:1.6}
   .ln.err{color:var(--mc-bad)} .ln.warn{color:var(--mc-warn)} .ln.info{color:var(--mc-info)}
+  /* ---- chat panel (resume / new session) ---- */
+  .mc-chatwrap{display:flex;flex-direction:column;height:calc(100vh - 150px);min-height:420px}
+  .mc-chatbar{display:flex;gap:8px;align-items:center;padding:8px 0}
+  .mc-chatbar .mc-input{flex:1}
+  .mc-chat-main{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:6px 2px}
+  .mc-msg .think{font-size:11.5px;color:var(--mc-faint);font-style:italic;margin-top:6px;border-top:1px dashed var(--mc-border);padding-top:6px}
+  .mc-msg .tools{font-size:11px;color:var(--mc-accent-2);margin-top:6px;font-family:ui-monospace,Menlo,monospace}
+  .mc-composer{display:flex;gap:8px;padding:10px 0 0;border-top:1px solid var(--mc-border);margin-top:6px}
+  .mc-composer textarea{flex:1;resize:vertical;min-height:42px;max-height:160px}
+  .mc-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mc-good);margin-right:6px}
+  .mc-dot.busy{background:var(--mc-warn);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+  .mc-chat-meta{font-size:12px;color:var(--mc-muted)}
+  .mc-chip{display:inline-block;background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:6px;padding:1px 7px;margin:2px;font-size:11px;font-family:ui-monospace,Menlo,monospace;color:var(--mc-fg)}
+  .mc-spacer{flex:1 1 auto}
+  .mc-select{background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:8px;color:var(--mc-fg);padding:5px 8px;font-size:12px;max-width:240px}
+  .mc-typing{display:inline-flex;align-items:center;gap:4px;color:var(--mc-muted);font-style:italic}
+  .mc-typing i{width:6px;height:6px;border-radius:50%;background:var(--mc-accent-2);display:inline-block;animation:mcblink 1s infinite}
+  .mc-typing i:nth-child(2){animation-delay:.15s}
+  .mc-typing i:nth-child(3){animation-delay:.3s}
+  @keyframes mcblink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+  /* ---- WS connection status ---- */
+  .mc-conn{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--mc-muted);padding:3px 8px;border:1px solid var(--mc-border);border-radius:8px}
+  .mc-conn .mc-dot{width:8px;height:8px;border-radius:50%;background:var(--mc-muted)}
+  .mc-conn-connected .mc-dot{background:#22c55e}
+  .mc-conn-connecting .mc-dot{background:#eab308;animation:pulse 1s infinite}
+  .mc-conn-error .mc-dot{background:#ef4444}
+  .mc-conn-idle .mc-dot{background:var(--mc-muted)}
+  /* ---- searchable model picker ---- */
+  .mc-modpick{position:relative;display:inline-block}
+  .mc-modpick .mc-select{display:inline-flex;align-items:center;gap:6px;cursor:pointer;max-width:320px}
+  .mc-modprov{color:var(--mc-muted);font-size:11px}
+  .mc-caret{font-size:9px;opacity:.7}
+  .mc-modlist{position:absolute;right:0;top:calc(100% + 6px);z-index:50;width:340px;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);padding:6px;max-height:360px;overflow-y:auto}
+  .mc-modsearch{margin-bottom:6px;width:100%}
+  .mc-modopt{display:flex;gap:6px;align-items:baseline;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+  .mc-modopt:hover{background:var(--mc-panel-2)}
+  .mc-modopt.active{background:rgba(45,212,191,.14);outline:1px solid var(--mc-accent-2)}
+  .mc-modempty{padding:10px;color:var(--mc-muted);font-size:12px}
+  /* ---- markdown rendered in chat ---- */
+  .md{line-height:1.55}
+  .md p{margin:0 0 8px}
+  .md p:last-child{margin-bottom:0}
+  .md h1,.md h2,.md h3,.md h4{margin:4px 0 8px;line-height:1.25}
+  .md h1{font-size:16px}.md h2{font-size:15px}.md h3{font-size:14px}.md h4{font-size:13px}
+  .md ul{margin:0 0 8px;padding-left:20px}
+  .md li{margin:2px 0}
+  .md code{background:#0a0d13;color:#ddd; border:1px solid var(--mc-border);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .md pre{background:#0a0d13;color:#ddd; border:1px solid var(--mc-border);border-radius:8px;padding:10px;overflow-x:auto;margin:0 0 8px}
+  .md pre code{background:none;border:0;padding:0}
+  .md strong{color:var(--mc-fg);font-weight:700}
+  /* ---- JSON collapsible ---- */
+  .md-json{margin:0 0 8px;border:1px solid var(--mc-border);border-radius:8px;overflow:hidden;background:#0a0d13}
+  .md-json>summary{cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:var(--mc-accent-2);background:var(--mc-panel-2);user-select:none}
+  .md-json>summary::before{content:"\25BC ";font-size:9px}
+  .md-json:not([open])>summary::before{content:"\25B6 "}
+  .md-json .md-pre{margin:0;border:0;border-radius:0}
+  /* ---- markdown table ---- */
+  .md-table{border-collapse:collapse;margin:0 0 8px;width:100%;font-size:12px}
+  .md-table th,.md-table td{border:1px solid var(--mc-border);padding:4px 8px;text-align:left;vertical-align:top}
+  .md-table th{background:var(--mc-panel-2);font-weight:600;color:var(--mc-fg)}
+  .md-table tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+  /* ---- [tag] pills ---- */
+  .mc-tag{display:inline-block;background:rgba(45,212,191,.12);border:1px solid var(--mc-accent-2);color:var(--mc-accent-2);border-radius:6px;padding:0 6px;margin:0 2px;font-size:11px;font-family:ui-monospace,Menlo,monospace;line-height:1.5}
+
 </style>
 </head>
 <body>
@@ -260,6 +334,67 @@ function timeAgo(t) {
   return Math.floor(s / 86400) + "d ago";
 }
 function str(v) { if (v === null || v === undefined) return "-"; if (v === true) return "yes"; if (v === false) return "no"; if (typeof v === "object") return JSON.stringify(v); return String(v); }
+// ---- minimal markdown -> safe HTML (escape first, then a few transforms) ----
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function mdToHtml(src) {
+  if (!src) return "";
+  let s = esc(String(src));
+  // fenced code blocks (json ones become collapsible)
+  s = s.replace(/```(\w*)\n([\s\S]*?)```/g, function (_, lang, code) {
+    code = code.replace(/\n$/, "");
+    if ((lang || "").toLowerCase() === "json") {
+      let pretty = code;
+      try { pretty = JSON.stringify(JSON.parse(code), null, 2); } catch (e) {}
+      return "<details class='md-json' open><summary>JSON</summary><pre class='md-pre'><code>" + esc(pretty) + "</code></pre></details>";
+    }
+    return "<pre class='md-pre'><code>" + code + "</code></pre>";
+  });
+  // markdown tables: header row, separator row, body rows
+  s = s.replace(/(?:^|\n)(\|.*\|\n\|[-: |]+\|\n(?:\|.*\|\n?)*)/g, function (_, block) {
+    const lines = block.trim().split("\n").filter(function (l) { return l.trim(); });
+    if (lines.length < 2) return block;
+    const splitRow = function (l) {
+      return l.replace(/^\||\|$/g, "").split("|").map(function (c) { return c.trim(); });
+    };
+    const head = splitRow(lines[0]);
+    const body = lines.slice(2).map(splitRow);
+    let html = "<table class='md-table'><thead><tr>";
+    head.forEach(function (c) { html += "<th>" + c + "</th>"; });
+    html += "</tr></thead><tbody>";
+    body.forEach(function (r) {
+      html += "<tr>";
+      r.forEach(function (c) { html += "<td>" + c + "</td>"; });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    return "\n" + html;
+  });
+  // headings
+  s = s.replace(/^####\s+(.*)$/gm, "<h4>$1</h4>")
+       .replace(/^###\s+(.*)$/gm, "<h3>$1</h3>")
+       .replace(/^##\s+(.*)$/gm, "<h2>$1</h2>")
+       .replace(/^#\s+(.*)$/gm, "<h1>$1</h1>");
+  // bold / italic / inline code
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+       .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+       .replace(/`([^`]+)`/g, "<code class='md-code'>$1</code>");
+  // [tag] tokens -> pills (only standalone bracketed words, not refs/indices)
+  s = s.replace(/(^|[\s(\[])(\[[a-z0-9_.\-]{1,40}\])(?=[\s).,;:!?]|$)/gi, function (_, pre, tag) {
+    return pre + "<span class='mc-tag'>" + tag + "</span>";
+  });
+  // unordered lists
+  s = s.replace(/(?:^|\n)((?:- |\* )[^\n]*(?:\n(?:- |\* )[^\n]*)*)/g, function (_, block) {
+    const items = block.trim().split(/\n/).map(function (l) { return "<li>" + l.replace(/^[-*]\s+/, "") + "</li>"; }).join("");
+    return "\n<ul>" + items + "</ul>";
+  });
+  // paragraphs / line breaks
+  s = s.split(/\n{2,}/).map(function (para) {
+    para = para.trim();
+    if (!para || /^<(h\d|ul|pre|table|details|blockquote)/.test(para)) return para;
+    return "<p>" + para.replace(/\n/g, "<br>") + "</p>";
+  }).join("\n");
+  return s;
+}
 function fmt(n) { if (n == null) return "-"; return n.toLocaleString(); }
 function gatewayKind(d) {
   const running = d.gateway_running;
@@ -315,6 +450,31 @@ function Section(p) {
   return h("div", { className: "mc-section" }, p.title ? h("h3", null, p.title) : null, kids.length === 1 ? kids[0] : kids);
 }
 function BackBtn(p) { return h("button", { className: "mc-back", onClick: p.onClick }, h(Icon, { name: "back", size: 18 }), p.children || "Back"); }
+// Enable/disable toggle for skills / MCP / toolsets.
+// api: {method, url(fn)->url, body(fn,enabled)->body}
+function useToggle(item, api, onChanged) {
+  const [busy, setBusy] = useS(false);
+  const [err, setErr] = useS(null);
+  const flip = useC(function () {
+    setBusy(true); setErr(null);
+    const enabled = !item.enabled;
+    fetchJSON(api.url(item), { method: api.method, body: JSON.stringify(api.body(item, enabled)) })
+      .then(function () { setBusy(false); if (onChanged) onChanged(); })
+      .catch(function (e) { setBusy(false); setErr(e); });
+  }, [item, api, onChanged]);
+  return { busy: busy, err: err, flip: flip };
+}
+function Toggle(p) {
+  const t = p.toggle;
+  const label = p.enabled ? "ON" : "OFF";
+  return h("span", { title: p.enabled ? "Enabled — click to disable" : "Disabled — click to enable",
+    role: "button", tabIndex: 0,
+    className: "cfg-toggle" + (p.enabled ? " on" : "") + (t && t.busy ? " busy" : ""),
+    onClick: function (e) { e.stopPropagation(); t.flip(); },
+    onKeyDown: function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); t.flip(); } } },
+    h("span", { className: "knob" }),
+    h("span", { className: "tlabel" }, label));
+}
 function Field(p) {
   const mono = p.mono;
   return h("div", { className: "row" },
@@ -502,7 +662,7 @@ function CronView(p) {
           h("dt", null, "State"), h("dd", null, Pill({ kind: (selJob.enabled && !selJob.paused_at) ? "good" : "warn", children: selJob.paused_at ? "paused" : (selJob.enabled ? "enabled" : "disabled") })),
           h("dt", null, "Paused reason"), h("dd", null, selJob.paused_reason || "-")),
         h("div", { style: { marginTop: 14 } }, h("div", { className: "mc-muted", style: { fontSize: 12, marginBottom: 6 } }, "Prompt")),
-        h("pre", { style: { whiteSpace: "pre-wrap", background: "#0a0d13", padding: 10, borderRadius: 8, fontSize: 12, margin: 0 } }, selJob.prompt || "-")) : Empty())));
+        h("pre", { style: { whiteSpace: "pre-wrap", background: "#0a0d13", color: "#aaa", padding: 10, borderRadius: 8, fontSize: 12, margin: 0 } }, selJob.prompt || "-")) : Empty())));
 }
 
 // ---- Security & Privacy ----
@@ -578,15 +738,57 @@ function MemoryView(p) {
 }
 
 // ---- Tools & MCP ----
+const TOOLSET_API = {
+  method: "PUT",
+  url: function (t) { return "/api/tools/toolsets/" + encodeURIComponent(t.name); },
+  body: function (t, enabled) { return { enabled: enabled, profile: null }; },
+};
+const MCP_API = {
+  method: "PUT",
+  url: function (m) { return "/api/mcp/servers/" + encodeURIComponent(m.name) + "/enabled"; },
+  body: function (m, enabled) { return { enabled: enabled }; },
+};
+function ToolsetRow(p) {
+  const t = useToggle(p.t, TOOLSET_API, p.onChanged);
+  return h("tr", { key: p.t.name },
+    h("td", null, h("div", null, h("strong", null, p.t.label || p.t.name), p.t.description ? h("div", { className: "mc-sub" }, p.t.description) : null)),
+    h("td", { className: "mono" }, str(p.t.platform)),
+    h("td", null, String((p.t.tools || []).length)),
+    h("td", null, Toggle({ enabled: p.t.enabled, toggle: t })));
+}
+function McpRow(p) {
+  const t = useToggle(p.m, MCP_API, p.onChanged);
+  const rawTools = p.m.tools;
+  // Real tools are exposed as an array of {name} / strings. A dict (e.g. {"include":[]})
+  // is server config, not a tool list — treat it as "not exposed".
+  const toolNames = Array.isArray(rawTools)
+    ? rawTools.map(function (x) { return typeof x === "string" ? x : ((x && (x.name || x)) || ""); }).filter(Boolean)
+    : [];
+  return h("div", { className: "mc-card", style: { margin: "6px 0" } },
+    h("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+      Toggle({ enabled: p.m.enabled, toggle: t }),
+      h("div", null, h("strong", null, p.m.name), p.m.description ? h("div", { className: "mc-sub" }, p.m.description) : null)),
+    toolNames.length
+      ? h("div", { className: "mc-sub", style: { marginTop: 6 } },
+          "Tools (" + toolNames.length + "): ",
+          toolNames.map(function (n, i) { return h("span", { key: i, className: "mc-chip" }, n); }))
+      : h("div", { className: "mc-sub", style: { marginTop: 6, opacity: .7 } }, "Tools: not exposed"));
+}
 function ToolsView(p) {
   const ts = useAsync(function () { return fetchJSON("/api/tools/toolsets"); }, [p.refreshTick]);
+  const mcp = useAsync(function () { return fetchJSON("/api/mcp/servers"); }, [p.refreshTick]);
   const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
   const [q, setQ] = useS("");
-  if (ts.loading || cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  const reload = function () { ts.reload && ts.reload(); mcp.reload && mcp.reload(); };
+  if (ts.loading || cfg.loading || mcp.loading) return h("div", { className: "mc-center" }, Spinner());
   if (ts.error) return ErrBox({ error: ts.error });
   const list = (ts.data || []).filter(function (t) {
     if (!q.trim()) return true;
     return (t.label || t.name || "").toLowerCase().indexOf(q.toLowerCase()) >= 0;
+  });
+  const mservers = ((mcp.data && mcp.data.servers) || []).filter(function (m) {
+    if (!q.trim()) return true;
+    return (m.name || "").toLowerCase().indexOf(q.toLowerCase()) >= 0;
   });
   const tool = (cfg.data && cfg.data.tools) || {};
   const ce = (cfg.data && cfg.data.code_execution) || {};
@@ -596,26 +798,36 @@ function ToolsView(p) {
       h("dt", null, "Code execution mode"), h("dd", null, h("span", { className: "mono" }, str(ce.mode))),
       h("dt", null, "Code exec timeout"), h("dd", null, str(ce.timeout)),
       h("dt", null, "Code exec max tool calls"), h("dd", null, str(ce.max_tool_calls)))),
+    Section({ title: "MCP servers (" + mservers.length + ")" },
+      h("div", { className: "mc-toolbar" }, h("input", { className: "mc-input", placeholder: "Filter MCP servers...", value: q, onChange: function (e) { setQ(e.target.value); } })),
+      mservers.length ? mservers.map(function (m) { return h(McpRow, { key: m.name, m: m, onChanged: reload }); }) : Empty()),
     Section({ title: "Toolsets (" + (ts.data || []).length + ")" },
       h("div", { className: "mc-toolbar" }, h("input", { className: "mc-input", placeholder: "Filter toolsets...", value: q, onChange: function (e) { setQ(e.target.value); } })),
       list.length ? h("table", { className: "mc-table" },
-        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Platform"), h("th", null, "Tools"), h("th", null, "Status"))),
-        h("tbody", null, list.map(function (t) {
-          const status = t.configured ? "configured" : (t.available ? "available" : "unavailable");
-          const kind = t.configured ? "good" : (t.available ? "info" : "muted");
-          return h("tr", { key: t.name },
-            h("td", null, h("div", null, h("strong", null, t.label || t.name)), t.description ? h("div", { className: "mc-sub" }, t.description) : null),
-            h("td", { className: "mono" }, str(t.platform)),
-            h("td", null, String((t.tools || []).length)),
-            h("td", null, Pill({ kind: kind, children: status })));
-        }))) : Empty()));
+        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Platform"), h("th", null, "Tools"), h("th", null, "Enabled"))),
+        h("tbody", null, list.map(function (t) { return h(ToolsetRow, { key: t.name, t: t, onChanged: reload }); }))) : Empty()));
 }
 
 // ---- Skills ----
+const SKILL_API = {
+  method: "PUT",
+  url: function (s) { return "/api/skills/toggle"; },
+  body: function (s, enabled) { return { name: s.name, enabled: enabled, profile: null }; },
+};
+function SkillRow(p) {
+  const t = useToggle(p.s, SKILL_API, p.onChanged);
+  return h("tr", { key: p.s.name },
+    h("td", null, h("div", null, h("strong", null, p.s.name), p.s.description ? h("div", { className: "mc-sub" }, p.s.description) : null)),
+    h("td", null, h("span", { className: "mono" }, str(p.s.category))),
+    h("td", null, Toggle({ enabled: p.s.enabled, toggle: t })),
+    h("td", null, str(p.s.usage)),
+    h("td", null, str(p.s.provenance)));
+}
 function SkillsView(p) {
   const sk = useAsync(function () { return fetchJSON("/api/skills"); }, [p.refreshTick]);
   const [q, setQ] = useS("");
   const [cat, setCat] = useS("all");
+  const reload = function () { sk.reload && sk.reload(); };
   if (sk.loading) return h("div", { className: "mc-center" }, Spinner());
   if (sk.error) return ErrBox({ error: sk.error });
   const all = sk.data || [];
@@ -630,17 +842,10 @@ function SkillsView(p) {
       h("div", { className: "mc-toolbar" },
         h("input", { className: "mc-input", placeholder: "Search skills...", value: q, onChange: function (e) { setQ(e.target.value); } }),
         h("select", { className: "mc-input", value: cat, onChange: function (e) { setCat(e.target.value); } },
-          cats.map(function (c) { return h("option", { key: c, value: c }, c); }))),
+          cats.map(function (c) { return h("option", { key: c, value: c }, c); })),
       list.length ? h("table", { className: "mc-table" },
         h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Category"), h("th", null, "Enabled"), h("th", null, "Usage"), h("th", null, "Provenance"))),
-        h("tbody", null, list.map(function (s) {
-          return h("tr", { key: s.name },
-            h("td", null, h("div", null, h("strong", null, s.name), s.description ? h("div", { className: "mc-sub" }, s.description) : null)),
-            h("td", null, h("span", { className: "mono" }, str(s.category))),
-            h("td", null, Pill({ kind: s.enabled ? "good" : "muted", children: s.enabled ? "on" : "off" })),
-            h("td", null, str(s.usage)),
-            h("td", null, str(s.provenance)));
-        }))) : Empty()));
+        h("tbody", null, list.map(function (s) { return h(SkillRow, { key: s.name, s: s, onChanged: reload }); }))) : Empty())));
 }
 
 // ---- Sessions ----
@@ -648,8 +853,17 @@ function SessionsView(p) {
   const stats = useAsync(function () { return fetchJSON("/api/sessions/stats"); }, [p.refreshTick]);
   const list = useAsync(function () { return fetchJSON("/api/sessions?limit=60&order=recent&exclude_sources=cron"); }, [p.refreshTick]);
   const [q, setQ] = useS("");
+  const [delId, setDelId] = useS(null);
+  const [delErr, setDelErr] = useS(null);
+  function doDelete() {
+    if (!delId) return;
+    setDelErr(null);
+    fetchJSON("/api/sessions/" + encodeURIComponent(delId), { method: "DELETE" })
+      .then(function () { setDelId(null); if (p.onRefresh) p.onRefresh(); })
+      .catch(function (e) { setDelErr("delete failed: " + (e && (e.message || JSON.stringify(e)))); });
+  }
   let rows = list.data ? (list.data.sessions || list.data) : [];
-  if (q.trim()) rows = rows.filter(function (s) { return (s.name || s.id || "").toLowerCase().indexOf(q.toLowerCase()) >= 0; });
+  if (q.trim()) rows = rows.filter(function (s) { return ((s.title || "") + " " + (s.display_name || "") + " " + (s.id || "") + " " + (s.source || "")).toLowerCase().indexOf(q.toLowerCase()) >= 0; });
   const { sorted, sortKey, sortDir, onSort } = useSort(rows, "id");
   if (stats.loading || list.loading) return h("div", { className: "mc-center" }, Spinner());
   if (stats.error) return ErrBox({ error: stats.error });
@@ -663,20 +877,37 @@ function SessionsView(p) {
       Stat({ k: "Archived", v: fmt(st.archived) }),
       Stat({ k: "Messages", v: fmt(st.messages) }))),
     Section({ title: "Recent sessions (" + rows.length + ")" },
-      h("div", { className: "mc-toolbar" }, h("input", { className: "mc-input", placeholder: "Search sessions...", value: q, onChange: function (e) { setQ(e.target.value); } })),
+      h("div", { className: "mc-toolbar" }, h("input", { className: "mc-input", placeholder: "Search sessions...", value: q, onChange: function (e) { setQ(e.target.value); } }),
+      h("button", { className: "mc-btn primary", onClick: function () { p.nav({ name: "chat" }); } }, "New chat")),
       sorted.length ? h("table", { className: "mc-table" },
         h("thead", null, h("tr", null,
+          h("th", { onClick: function () { onSort("title"); } }, "Name" + Arrow("title")),
           h("th", { onClick: function () { onSort("id"); } }, "ID" + Arrow("id")),
           h("th", { onClick: function () { onSort("source"); } }, "Source" + Arrow("source")),
           h("th", { onClick: function () { onSort("started_at"); } }, "Started" + Arrow("started_at")),
-          h("th", null, "Messages"))),
+          h("th", null, "Messages"),
+          h("th", null, ""))),
         h("tbody", null, sorted.map(function (s) {
+          const nm = s.title || s.display_name || "(untitled)";
           return h("tr", { key: s.id, onClick: function () { p.nav({ name: "session", id: s.id }); }, style: { cursor: "pointer" } },
+            h("td", null, h("strong", null, nm)),
             h("td", { className: "mono" }, String(s.id).slice(0, 12)),
             h("td", null, str(s.source)),
             h("td", null, timeAgo((s.started_at || 0) * 1000)),
-            h("td", null, str(s.message_count != null ? s.message_count : (s.messages ? s.messages.length : "-"))));
-        }))) : Empty()));
+            h("td", null, str(s.message_count != null ? s.message_count : (s.messages ? s.messages.length : "-"))),
+            h("td", { style: { textAlign: "right" } },
+              h("button", { className: "mc-btn danger sm", title: "Delete session",
+                onClick: function (e) { e.stopPropagation(); setDelId(s.id); } }, "Delete")));
+        }))) : Empty()),
+    delId ? h("div", { className: "mc-modal-backdrop", onClick: function () { setDelId(null); } },
+      h("div", { className: "mc-modal", onClick: function (e) { e.stopPropagation(); } },
+        h("h3", { className: "mc-h" }, "Delete session?"),
+        h("p", { className: "mc-sub" }, "Session " + String(delId).slice(0, 12) + "… and its messages will be permanently removed. This cannot be undone."),
+        delErr ? h("div", { className: "mc-err", style: { marginBottom: 10 } }, String(delErr.message || delErr)) : null,
+        h("div", { className: "mc-modal-actions" },
+          h("button", { className: "mc-btn", onClick: function () { setDelId(null); } }, "Cancel"),
+          h("button", { className: "mc-btn danger", onClick: doDelete }, "Delete"))))
+      : null);
 }
 
 // ---- Logs ----
@@ -892,7 +1123,7 @@ function App() {
       return nt;
     });
   }, []);
-  const rp = { refreshTick: refreshTick };
+  const rp = { refreshTick: refreshTick, onRefresh: onRefresh };
   const active = view.name === "session" ? "sessions" : view.name;
   const Body = VIEWS[active] || OverviewView;
   return h("div", { className: "mc-shell", "data-theme": theme },
@@ -908,24 +1139,239 @@ function App() {
     h("div", { className: "mc-main" },
       h(Header, { view: active, onRefresh: onRefresh, onToggleTheme: onToggleTheme, theme: theme }),
       h("div", { className: "mc-body" }, view.name === "session"
-        ? h(SessionDetail, Object.assign({ onBack: onBack, id: view.id }, rp))
+        ? h(SessionDetail, Object.assign({ nav: nav, onBack: onBack, id: view.id }, rp))
+        : view.name === "chat"
+        ? h(ChatPanel, Object.assign({ onBack: onBack }, rp))
+        : view.name === "sessionchat"
+        ? h(ChatPanel, Object.assign({ onBack: onBack, sessionId: view.id }, rp))
         : h(Body, Object.assign({ nav: nav, onBack: onBack }, rp)))));
+}
+
+// ---- Chat over /api/ws (JSON-RPC sidecar) ----
+function wsToken() {
+  try {
+    const g = window.__HERMES_SESSION_TOKEN__ || "";
+    if (g) return g;
+  } catch (e) {}
+  // Fallback to the token injected by the proxy into the TOKEN const.
+  try {
+    if (typeof TOKEN === "string" && TOKEN && TOKEN.indexOf("__MC_TOKEN__") === -1) return TOKEN;
+  } catch (e) {}
+  return "";
+}
+function wsUrl() {
+  return "ws://127.0.0.1:9119/api/ws?token=" + encodeURIComponent(wsToken());
+}
+const CONN_LABEL = { idle: "idle", connecting: "connecting…", connected: "connected", error: "disconnected" };
+// Searchable model picker: shows provider (muted) + model; same model id can
+// appear under multiple providers, so provider is always displayed.
+function ModelPicker(p) {
+  const [open, setOpen] = useS(false);
+  const [q, setQ] = useS("");
+  const all = p.models || [];
+  const ql = q.trim().toLowerCase();
+  const filtered = ql
+    ? all.filter(function (m) {
+        const hay = ((m.id || "") + " " + (m.provider || "")).toLowerCase();
+        return hay.indexOf(ql) >= 0;
+      })
+    : all;
+  const cur = all.find(function (m) { return (m.id || m.model) === p.cur; }) || null;
+  const curLabel = cur ? cur.id : (p.cur || "model");
+  return h("div", { className: "mc-modpick" },
+    h("button", { className: "mc-select", type: "button", onClick: function () { setOpen(!open); }, title: "Choose model" },
+      cur ? h("span", null, h("span", { className: "mc-modprov" }, cur.provider + " / "), cur.id)
+           : h("span", null, curLabel),
+      h("span", { className: "mc-caret" }, "▾")),
+    open
+      ? h("div", { className: "mc-modlist" },
+          h("input", { className: "mc-input mc-modsearch", autoFocus: true, placeholder: "Search models…", value: q,
+            onChange: function (e) { setQ(e.target.value); }, onKeyDown: function (e) { if (e.key === "Escape") setOpen(false); } }),
+          (filtered.length
+            ? filtered.map(function (m, i) {
+                const active = (m.id || m.model) === p.cur;
+                return h("div", { key: i, className: "mc-modopt" + (active ? " active" : ""),
+                  onClick: function () { p.onSelect(m.id || m.model); setOpen(false); setQ(""); } },
+                  h("span", { className: "mc-modprov" }, m.provider + " / "),
+                  h("span", null, m.id));
+              })
+            : h("div", { className: "mc-modempty" }, "No models match")))
+        : null);
+}
+let _chatRid = 20;
+function ChatPanel(p) {
+  const [msgs, setMsgs] = useS([]);        // [{role, text, think, tools}]
+  const [draft, setDraft] = useS("");
+  const [busy, setBusy] = useS(false);
+  const [typing, setTyping] = useS(false); // agent started, no text yet
+  const [err, setErr] = useS(null);
+  const [models, setModels] = useS(null);   // [{id, provider, label}]
+  const [curModel, setCurModel] = useS("");
+  const [connState, setConnState] = useS("idle"); // idle | connecting | connected | error
+  const wsRef = React.useRef(null);
+  const msgRef = React.useRef(null);
+  const sidRef = React.useRef(p.sessionId || null);
+  const pendingRef = React.useRef({});       // rid -> {resolve, reject}
+
+  // ---- model selector ----
+  const reloadModels = useC(function () {
+    fetchJSON("/api/model/options").then(function (opts) {
+      const provs = (opts && opts.providers) || [];
+      const list = [];
+      provs.forEach(function (pr) {
+        (pr.models || []).forEach(function (mid) {
+          list.push({ id: mid, provider: pr.slug, label: mid });
+        });
+      });
+      setModels(list);
+    }).catch(function () {});
+    fetchJSON("/api/model/info").then(function (info) {
+      setCurModel((info && (info.model || info.default)) || "");
+    }).catch(function () {});
+  }, []);
+  React.useEffect(function () { reloadModels(); }, []);
+  React.useEffect(function () { ensureConn().catch(function () {}); }, []);
+  function setModel(id) {
+    const m = (models || []).find(function (x) { return (x.id || x.model) === id; });
+    const payload = { scope: "main", model: id, provider: m ? (m.provider || m.prov) : null };
+    setCurModel(id);
+    fetchJSON("/api/model/set", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).catch(function (e) { setErr("model set failed: " + e); });
+  }
+
+  const ensureConn = useC(function () {
+    if (wsRef.current && wsRef.current.readyState === 1) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      let ws;
+      try { ws = new WebSocket(wsUrl()); } catch (e) { reject(e); return; }
+      wsRef.current = ws;
+      setConnState("connecting");
+      ws.onmessage = function (ev) {
+        let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.method === "event") {
+          handleEvent(m.params && m.params.type, (m.params && m.params.payload) || {});
+        } else if (m.id != null && pendingRef.current[m.id]) {
+          const cb = pendingRef.current[m.id]; delete pendingRef.current[m.id];
+          if (m.error) cb.reject(m.error); else cb.resolve(m.result);
+        }
+      };
+      ws.onopen = function () { setConnState("connected"); resolve(); };
+      ws.onerror = function () { setConnState("error"); setErr("WebSocket error (is 9119 up?)"); };
+      ws.onclose = function () { wsRef.current = null; setConnState("idle"); };
+    });
+  }, []);
+
+  function rpc(method, params) {
+    return ensureConn().then(function () {
+      const ws = wsRef.current;
+      const rid = ++_chatRid;
+      return new Promise(function (resolve, reject) {
+        pendingRef.current[rid] = { resolve: resolve, reject: reject };
+        ws.send(JSON.stringify({ jsonrpc: "2.0", id: rid, method: method, params: params }));
+      });
+    });
+  }
+
+  function handleEvent(t, pl) {
+    if (t === "message.start") {
+      const cur = { role: "assistant", text: "", think: "", tools: [] };
+      msgRef.current = cur; setTyping(true); setBusy(true);
+      setMsgs(function (a) { return a.concat([cur]); });
+    } else if (t === "thinking.delta") {
+      const cur = msgRef.current; if (cur) { cur.think += (pl.text || ""); setMsgs(function (a) { return a.slice(); }); }
+    } else if (t === "message.delta") {
+      const cur = msgRef.current; if (cur) { if (cur.text === "") setTyping(false); cur.text += (pl.text || ""); setMsgs(function (a) { return a.slice(); }); }
+    } else if (t === "reasoning.available") {
+      const cur = msgRef.current; if (cur) { cur.think = pl.text || cur.think; setMsgs(function (a) { return a.slice(); }); }
+    } else if (t === "message.complete") {
+      const cur = msgRef.current; if (cur) { cur.text = pl.text || cur.text; setMsgs(function (a) { return a.slice(); }); }
+      msgRef.current = null; setTyping(false); setBusy(false);
+    } else if (t === "tool.call" || t === "tool.start") {
+      const cur = msgRef.current; if (cur) { cur.tools = cur.tools.concat([pl.name || "tool"]); setMsgs(function (a) { return a.slice(); }); }
+    } else if (t === "error") {
+      setErr(pl.message || "agent error"); setTyping(false); setBusy(false);
+    }
+  }
+
+  function send(text) {
+    setErr(null);
+    const run = function (sid) {
+      sidRef.current = sid;
+      rpc("prompt.submit", { session_id: sid, text: text }).catch(function (e) {
+        setErr("submit failed: " + (e && (e.message || JSON.stringify(e)))); setBusy(false); setTyping(false);
+      });
+    };
+    if (!sidRef.current) {
+      rpc("session.create", { title: "Mission Control", source: "tui" })
+        .then(function (res) { run((res && res.session_id) || (res && res.id)); })
+        .catch(function (e) { setErr("session create failed: " + (e && (e.message || JSON.stringify(e)))); setBusy(false); });
+    } else {
+      run(sidRef.current);
+    }
+  }
+  function onSubmit(e) {
+    if (e) e.preventDefault();
+    const text = draft.trim(); if (!text || busy) return;
+    setMsgs(function (a) { return a.concat([{ role: "user", text: text }]); });
+    setDraft(""); send(text);
+  }
+  function onKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSubmit(e); }
+  }
+  const rows = msgs.map(function (mm, i) {
+    const tools = (mm.tools || []).map(function (n, j) {
+      return h("span", { key: j, className: "mc-chip", style: { borderColor: "var(--mc-accent-2)", color: "var(--mc-accent-2)" } }, "⚙ " + n);
+    });
+    return h("div", { key: i, className: cn("mc-msg", mm.role === "user" ? "user" : "assistant") },
+      h("div", { className: "role" }, mm.role),
+      mm.role === "user"
+        ? h("div", { className: "body" }, str(mm.text))
+        : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(mm.text) } }),
+      mm.think ? h("div", { className: "think" }, h("strong", null, "thinking: "), h("span", { dangerouslySetInnerHTML: { __html: mdToHtml(mm.think) } })) : null,
+      tools.length ? h("div", { className: "tools" }, "tools used:", tools) : null);
+  });
+  const typingRow = typing ? h("div", { className: "mc-msg assistant" },
+    h("div", { className: "role" }, "assistant"),
+    h("div", { className: "body" }, h("span", { className: "mc-typing" }, h("i"), h("i"), h("i"), " Hermes is typing…"))) : null;
+  return h("div", { className: "mc-chatwrap" },
+    h("div", { className: "mc-chatbar" },
+      p.onBack ? h("button", { className: "mc-btn", onClick: p.onBack }, "← Back") : null,
+      h("span", { className: "mc-chat-meta" }, p.sessionId ? "Resuming " + p.sessionId : "New session"),
+      h("span", { className: "mc-spacer" }),
+      h("span", { className: "mc-conn mc-conn-" + connState, title: "WS: " + CONN_LABEL[connState] },
+        h("span", { className: "mc-dot" }), CONN_LABEL[connState]),
+      models && models.length
+        ? h(ModelPicker, { models: models, cur: curModel, onSelect: setModel })
+        : null),
+    h("div", { className: "mc-chat-main" },
+      rows.length || typing ? h("div", null, rows, typingRow) : h("div", { className: "mc-empty" }, "Send a message to start a conversation.")),
+    err ? h("div", { className: "mc-err", style: { margin: "0 16px 8px" } }, String(err.message || err)) : null,
+    h("form", { className: "mc-composer", onSubmit: onSubmit },
+      h("textarea", { className: "mc-input", placeholder: busy ? "Hermes is thinking…" : "Message Hermes…  (Enter to send, Shift+Enter for newline)", value: draft, disabled: busy,
+        onChange: function (e) { setDraft(e.target.value); }, onKeyDown: onKey }),
+      h("button", { className: "mc-btn primary", type: "submit", disabled: busy }, busy ? "…" : "Send")));
 }
 
 function SessionDetail(p) {
   const m = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id) + "/messages?limit=200"); }, [p.id]);
   const meta = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id)); }, [p.id]);
   return h("div", null,
-    BackBtn({ onClick: p.onBack }),
+    h("div", { className: "mc-chatbar" },
+      BackBtn({ onClick: p.onBack }),
+      h("button", { className: "mc-btn primary", onClick: function () { p.nav({ name: "sessionchat", id: p.id }); } }, "Resume & chat"),
     h("h2", { className: "mc-h", style: { marginTop: 0 } }, meta.data ? str(meta.data.name || p.id) : "Session"),
-    h("div", { className: "mc-sub" }, h("span", { className: "mc-id" }, p.id),
+    //h("div", { className: "mc-sub" }, h("span", { className: "mc-id" }, p.id)),
       meta.data ? "  ·  " + str(meta.data.source || "cli") + "  ·  " + (meta.data.started_at ? timeAgo(meta.data.started_at * 1000) : "") : ""),
     m.loading ? h("div", { className: "mc-center" }, Spinner())
       : m.error ? ErrBox({ error: m.error })
       : h("div", { className: "mc-chat" }, (m.data && m.data.messages ? m.data.messages : []).map(function (msg, i) {
           const role = (msg.role || "assistant").toLowerCase();
           return h("div", { key: i, className: cn("mc-msg", role === "user" ? "user" : "assistant") },
-            h("div", { className: "role" }, role), str(msg.content));
+            h("div", { className: "role" }, role),
+            h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(msg.content) } }));
         })));
 }
 
