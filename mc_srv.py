@@ -1,10 +1,39 @@
-import http.server, socketserver, urllib.request, urllib.error, re, os
+import http.server, socketserver, urllib.request, urllib.error, re, os, json
 
 PORT = int(os.environ.get("MC_PORT", "9120"))
 DASH = "http://127.0.0.1:9119"
 ROOT = os.path.dirname(os.path.abspath(__file__))
 HTML = os.path.join(ROOT, "mission-control-standalone.html")
 PROXY = ("/api/", "/dashboard-plugins/")
+
+# Editable memory/context files surfaced in the Memory & Context view.
+HERMES_HOME = os.path.expanduser("~/.hermes")
+EDITABLE_FILES = {
+    "soul": os.path.join(HERMES_HOME, "SOUL.md"),
+    "memory": os.path.join(HERMES_HOME, "memories", "MEMORY.md"),
+    "user": os.path.join(HERMES_HOME, "memories", "USER.md"),
+}
+
+def read_editable(key):
+    path = EDITABLE_FILES.get(key)
+    if not path:
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+    except Exception:
+        return None
+
+def write_editable(key, text):
+    path = EDITABLE_FILES.get(key)
+    if not path:
+        return False
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return True
 
 def get_token():
     try:
@@ -81,6 +110,24 @@ class H(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path.startswith("/mc-files"):
+            # GET /mc-files?key=soul|memory|user  -> {"key":..,"path":..,"content":..}
+            from urllib.parse import urlparse, parse_qs
+            q = parse_qs(urlparse(self.path).query)
+            key = (q.get("key") or [""])[0]
+            content = read_editable(key)
+            if content is None:
+                self.send_error(404, "Unknown or unreadable file key")
+                return
+            body = ('{"key": "%s", "path": "%s", "content": %s}'
+                    % (key, EDITABLE_FILES.get(key, ""), json.dumps(content))).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/mission-control" or self.path.startswith("/mission-control"):
             return self._page()
         if self.path.startswith(PROXY):
@@ -98,6 +145,26 @@ class H(http.server.SimpleHTTPRequestHandler):
         self.send_error(405)
 
     def do_PUT(self):
+        if self.path.startswith("/mc-files"):
+            from urllib.parse import urlparse, parse_qs
+            q = parse_qs(urlparse(self.path).query)
+            key = (q.get("key") or [""])[0]
+            ln = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(ln) if ln else b"{}"
+            try:
+                payload = json.loads(raw.decode("utf-8"))
+            except Exception:
+                payload = {}
+            text = payload.get("content", "")
+            ok = write_editable(key, text)
+            body = ('{"ok": %s}' % ("true" if ok else "false")).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path.startswith(PROXY):
             return proxy(self, "PUT")
         self.send_error(405)

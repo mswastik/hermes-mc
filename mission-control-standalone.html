@@ -207,15 +207,26 @@
   .mc-chat-meta{font-size:12px;color:var(--mc-muted)}
   .mc-chip{display:inline-block;background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:6px;padding:1px 7px;margin:2px;font-size:11px;font-family:ui-monospace,Menlo,monospace;color:var(--mc-fg)}
   .mc-toolcalls{margin-top:6px;display:flex;flex-direction:column;gap:3px}
-  .mc-toolcall{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--mc-panel-2);border:1px solid var(--mc-border);border-left:3px solid var(--mc-accent-2);border-radius:5px;padding:3px 8px;color:var(--mc-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .mc-toolresult{margin-top:6px;border:1px dashed var(--mc-border);border-radius:6px;padding:5px 8px;background:var(--mc-panel-2)}
-  .mc-toolresult.compact{padding:3px 8px}
-  .mc-toolresults{margin-top:6px;display:flex;flex-direction:column;gap:5px;border-left:2px solid var(--mc-border);padding-left:8px}
-  .mc-toolresult-wrap{display:block}
-  .mc-toolresult-tag{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--mc-accent-2);margin-right:6px;white-space:nowrap}
-  .mc-toolresult-body{font-size:12px;color:var(--mc-muted)}
+  .mc-toolcall{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--mc-panel-2);border:1px solid var(--mc-border);border-left:3px solid var(--mc-accent-2);border-radius:5px;color:var(--mc-fg)}
+  .mc-toolcall-sum{display:flex;align-items:center;gap:8px;padding:4px 8px;cursor:pointer;user-select:none;list-style:none}
+  .mc-toolcall-sum::-webkit-details-marker{display:none}
+  .mc-toolcall-sum::before{content:"\25B8  ";font-size:9px;color:var(--mc-accent-2)}
+  .mc-toolcall[open] > .mc-toolcall-sum::before{content:"\25BE  "}
+  .mc-toolcall-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .mc-toolcall-nargs{font-size:10px;color:var(--mc-muted);background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:5px;padding:0 5px;white-space:nowrap}
+  .mc-toolcall-detail{padding:0 8px 8px 22px}
+  .mc-toolcall-detail .mc-pre{margin:0;background:var(--mc-panel);border-radius:5px;font-size:11px;max-height:260px;overflow:auto}
+  .mc-toolcall-path{font-size:10.5px;color:var(--mc-accent-2);padding:3px 0 4px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mc-toolcall-detail .mc-diff{margin:2px 0 0;max-height:340px}
+  .mc-diff{margin:2px 0 0;padding:4px 0;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:6px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.5;overflow:auto;max-height:380px}
+  .mc-diff-line{white-space:pre;padding:0 8px}
+  .mc-diff-add{background:rgba(16,185,129,.22);color:#052e22;}
+  .mc-diff-del{background:rgba(239,68,68,.22);color:#2a0707;}
+  .mc-diff-hunk{color:var(--mc-accent-2);background:rgba(45,212,191,.14);}
+  .mc-diff-ctx{color:var(--mc-fg)}
   .mc-spacer{flex:1 1 auto}
-  .mc-select{background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:8px;color:var(--mc-fg);padding:5px 8px;font-size:12px;max-width:240px}
+  .mc-textarea{background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:8px;color:var(--mc-fg);padding:10px;resize:vertical;outline:none}
+  .mc-textarea:focus{border-color:var(--mc-accent-2)}
   .mc-typing{display:inline-flex;align-items:center;gap:4px;color:var(--mc-muted);font-style:italic}
   .mc-typing i{width:6px;height:6px;border-radius:50%;background:var(--mc-accent-2);display:inline-block;animation:mcblink 1s infinite}
   .mc-typing i:nth-child(2){animation-delay:.15s}
@@ -458,48 +469,129 @@ function mergeToolResults(messages) {
   });
   return out;
 }
-// Parses msg.tool_calls[].function.arguments (a JSON *string*) and emits a
-// short, per-tool-type summary so the dashboard shows WHAT the tool did
-// (file edited, command run, files searched) — matching the desktop UI.
-function parseArgs(tc) {
-  const fn = tc && tc.function; if (!fn) return null;
-  let a = fn.arguments;
+// Parses a tool call into {name, args, id}. Handles BOTH the Hermes REST shape
+// ({function:{name, arguments}}) and the streaming shape ({name, arguments}).
+function parseToolCall(tc) {
+  if (!tc) return null;
+  if (tc.function) {
+    let a = tc.function.arguments;
+    if (typeof a === "string") { try { a = JSON.parse(a); } catch (e) { a = null; } }
+    return { name: tc.function.name, args: a || {}, id: tc.id || null };
+  }
+  let a = tc.arguments || tc.input || tc.args || null;
   if (typeof a === "string") { try { a = JSON.parse(a); } catch (e) { a = null; } }
-  return { name: fn.name, args: a || {} };
+  return { name: tc.name || "tool", args: a || {}, id: tc.id || null };
+}
+// One-line human summary of WHAT the tool did (file edited, command run, …).
+function toolCallSummary(c) {
+  const a = c.args || {};
+  if (c.name === "patch" || c.name === "edit" || c.name === "write_file" || c.name === "write") {
+    const verb = c.name === "patch" ? "✎ patch" : c.name === "edit" ? "✎ edit" : "✎ write";
+    return verb + " → " + (a.path || a.file_path || a.file || "");
+  }
+  if (c.name === "read_file" || c.name === "read") {
+    return "📄 read " + (a.path || "") + (a.offset ? " (line " + a.offset + ")" : "");
+  }
+  if (c.name === "terminal" || c.name === "bash" || c.name === "shell") {
+    const cmd = (a.command || a.cmd || "").replace(/\n/g, " ⏎ ");
+    return "⚡ " + (cmd.length > 140 ? cmd.slice(0, 140) + "…" : cmd);
+  }
+  if (c.name === "search_files" || c.name === "grep" || c.name === "glob") {
+    return "🔍 " + (a.pattern || a.query || "") + (a.path || a.target ? " in " + (a.path || a.target) : "");
+  }
+  if (c.name === "web_search" || c.name === "web_extract" || c.name === "fetch") {
+    return "🌐 " + c.name + ": " + (a.query || a.url || a.urls || "");
+  }
+  if (a && Object.keys(a).length) {
+    return "⚙ " + c.name + ": " + JSON.stringify(a).slice(0, 160);
+  }
+  return "⚙ " + c.name;
+}
+// Pretty-print tool args with REAL newlines. JSON.stringify escapes newlines
+// to "\\n", which a <pre> would show literally; convert a literal "\\n" (backslash-n)
+// inside string values into an actual line break so multi-line file snippets /
+// commands render readably.
+function dispArgString(s) {
+  return '"' + s.replace(/\\\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r/g, "") + '"';
+}
+function formatArgs(v, depth) {
+  depth = depth || 0;
+  var pad = "  ".repeat(depth);
+  if (v === null || v === undefined) return "null";
+  if (typeof v === "string") {
+    var sv = v.replace(/\\n/g, "\n").replace(/\\t/g, "\t");
+    return depth === 0 ? sv : dispArgString(sv);
+  }
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) {
+    if (!v.length) return "[]";
+    return "[" + "\n" + v.map(function (x) { return pad + "  " + formatArgs(x, depth + 1); }).join("," + "\n") + "\n" + pad + "]";
+  }
+  if (typeof v === "object") {
+    var keys = Object.keys(v);
+    if (!keys.length) return "{}";
+    return "{" + "\n" + keys.map(function (k) {
+      return pad + "  " + JSON.stringify(k) + ": " + formatArgs(v[k], depth + 1);
+    }).join("," + "\n") + "\n" + pad + "}";
+  }
+  return String(v);
 }
 function renderToolCalls(msg) {
-  const calls = (msg.tool_calls || []).map(parseArgs).filter(Boolean);
+  const calls = (msg.tool_calls || []).map(parseToolCall).filter(Boolean);
   if (!calls.length) return null;
   const items = calls.map(function (c, i) {
-    const a = c.args; let label = c.name;
-    if (c.name === "patch" || c.name === "write_file") {
-      label = (c.name === "patch" ? "✎ patch" : "✎ write") + " → " + (a.path || a.file_path || "");
-    } else if (c.name === "read_file") {
-      label = "📄 read " + (a.path || "") + (a.offset ? " (line " + a.offset + ")" : "");
-    } else if (c.name === "terminal") {
-      const cmd = (a.command || "").replace(/\n/g, " ⏎ ");
-      label = "⚡ " + (cmd.length > 120 ? cmd.slice(0, 120) + "…" : cmd);
-    } else if (c.name === "search_files") {
-      label = "🔍 search " + (a.pattern || "") + " in " + (a.path || a.target || "");
-    } else if (c.name === "web_search" || c.name === "web_extract") {
-      label = "🌐 " + c.name + ": " + (a.query || a.url || a.urls || "");
-    } else if (a && Object.keys(a).length) {
-      label = "⚙ " + c.name + ": " + JSON.stringify(a).slice(0, 160);
+    const isObj = c.args && typeof c.args === "object";
+    const argCount = isObj ? Object.keys(c.args).length : 0;
+    const summary = toolCallSummary(c);
+    // For edit/write tools, render old vs new as a red/green unified diff.
+    let detailBody = null;
+    if (isObj && (c.name === "patch" || c.name === "edit" || c.name === "write_file" || c.name === "write")) {
+      const oldS = c.args.old_string, newS = c.args.new_string != null ? c.args.new_string : c.args.content;
+      const path = c.args.path || c.args.file_path || c.args.file || "";
+      if (oldS != null && newS != null) {
+        const oLines = String(oldS).split("\n");
+        const nLines = String(newS).split("\n");
+        const diffTxt = ["@@ " + (path ? path + " " : "") + "@@"]
+          .concat(oLines.map(function (l) { return "-" + l; }))
+          .concat(nLines.map(function (l) { return "+" + l; }))
+          .join("\n");
+        detailBody = h("div", { className: "mc-toolcall-detail" },
+          path ? h("div", { className: "mc-toolcall-path" }, "⤷ " + path) : null,
+          renderDiff(diffTxt));
+      } else if (newS != null) {
+        const nLines = String(newS).split("\n");
+        const diffTxt = ["@@ " + (path ? path + " " : "") + " (new) @@"]
+          .concat(nLines.map(function (l) { return "+" + l; }))
+          .join("\n");
+        detailBody = h("div", { className: "mc-toolcall-detail" },
+          path ? h("div", { className: "mc-toolcall-path" }, "⤷ " + path) : null,
+          renderDiff(diffTxt));
+      }
     }
-    return h("div", { key: i, className: "mc-toolcall", title: c.name },
-      h("span", { className: "mc-toolcall-name" }, label));
+    if (!detailBody && argCount) {
+      detailBody = h("div", { className: "mc-toolcall-detail" },
+        h("pre", { className: "mc-pre" }, formatArgs(c.args)));
+    }
+    // Native <details> keeps its open/closed state across re-renders.
+    return h("details", { key: i, className: "mc-toolcall" },
+      h("summary", { className: "mc-toolcall-sum", title: c.name },
+        h("span", { className: "mc-toolcall-name" }, summary),
+        argCount ? h("span", { className: "mc-toolcall-nargs" }, argCount + " arg" + (argCount > 1 ? "s" : "")) : null),
+      detailBody);
   });
   return h("div", { className: "mc-toolcalls" }, items);
 }
-function renderToolResult(msg) {
-  if (msg.role !== "tool" && !msg.tool_name) return null;
-  const txt = str(msg.content);
-  // Tool-result lines like "[patch] replace in ~/x (N chars result)" are
-  // status summaries — show them compactly, not as a full prose block.
-  const compact = /^\[(patch|read_file|write_file|terminal|search_files|web_search|web_extract|execute_code)\]\s/m.test(txt);
-  return h("div", { className: "mc-toolresult" + (compact ? " compact" : "") },
-    h("span", { className: "mc-toolresult-tag" }, "⚙ " + (msg.tool_name || "tool")),
-    h("span", { className: "mc-toolresult-body", dangerouslySetInnerHTML: { __html: mdToHtml(txt) } }));
+// Renders a unified-ish diff (or any output with +/- lines) with per-line
+// add/del/hunk/context coloring. Falls back to the whole text if no diff marker.
+function renderDiff(txt) {
+  const lines = String(txt).split("\n");
+  const start = lines.findIndex(function (l) { return /^[+\-@]/.test(l); });
+  const diff = start >= 0 ? lines.slice(start) : lines;
+  return h("pre", { className: "mc-diff" },
+    diff.map(function (l, i) {
+      const kind = l[0] === "+" ? "add" : l[0] === "-" ? "del" : (l[0] === "@" ? "hunk" : "ctx");
+      return h("div", { key: i, className: "mc-diff-line mc-diff-" + kind }, l.length ? l : " ");
+    }));
 }
 function gatewayKind(d) {
   const running = d.gateway_running;
@@ -812,7 +904,14 @@ function SecurityView(p) {
 // ---- Memory & Context ----
 function MemoryView(p) {
   const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
-  if (cfg.loading) return h("div", { className: "mc-center" }, Spinner());
+  const files = useAsync(function () {
+    return Promise.all([
+      fetchJSON("/mc-files?key=soul").catch(function () { return { key: "soul", content: "" }; }),
+      fetchJSON("/mc-files?key=memory").catch(function () { return { key: "memory", content: "" }; }),
+      fetchJSON("/mc-files?key=user").catch(function () { return { key: "user", content: "" }; }),
+    ]);
+  }, [p.refreshTick]);
+  if (cfg.loading || files.loading) return h("div", { className: "mc-center" }, Spinner());
   if (cfg.error) return ErrBox({ error: cfg.error });
   const c = cfg.data || {};
   const mem = c.memory || {};
@@ -839,7 +938,60 @@ function MemoryView(p) {
     Section({ title: "Checkpoints" }, h("div", { className: "mc-def" },
       h("dt", null, "Enabled"), h("dd", null, Pill({ kind: pillKind(chk.enabled), children: str(chk.enabled) })),
       h("dt", null, "Max snapshots"), h("dd", null, str(chk.max_snapshots)),
-      h("dt", null, "Retention (days)"), h("dd", null, str(chk.retention_days)))));
+      h("dt", null, "Retention (days)"), h("dd", null, str(chk.retention_days)))),
+    h(MemoryEditableSlot, { files: files.data || [] }));
+}
+
+// Render as a child element (h()) so its hooks are scoped to its own
+// component instance — calling it as a bare function would leak its hooks
+// into MemoryView's render and break the hook-count invariant on reload.
+function MemoryEditableSlot(p) { return h(EditableMemory, { files: p.files }); }
+
+const MEM_FILE_META = [
+  { key: "soul", label: "SOUL.md", desc: "System / persona prompt file" },
+  { key: "memory", label: "MEMORY.md", desc: "Persistent agent memory (your MEMORY.md)" },
+  { key: "user", label: "USER.md", desc: "User profile (your USER.md)" },
+];
+function EditableMemory(p) {
+  const initial = {};
+  (p.files || []).forEach(function (f) { initial[f.key] = f.content != null ? f.content : ""; });
+  const paths = {};
+  (p.files || []).forEach(function (f) { paths[f.key] = f.path; });
+  const [tab, setTab] = useS(MEM_FILE_META[0].key);
+  const [drafts, setDrafts] = useS(initial);
+  const [status, setStatus] = useS(null); // {kind:'ok'|'err'|'saving', msg}
+  const meta = MEM_FILE_META.filter(function (m) { return m.key === tab; })[0] || MEM_FILE_META[0];
+  const draft = drafts[tab] != null ? drafts[tab] : "";
+  const onEdit = useC(function (v) { setDrafts(function (d) { const n = Object.assign({}, d); n[tab] = v; return n; }); setStatus(null); }, [tab]);
+  const onSave = useC(function () {
+    setStatus({ kind: "saving", msg: "saving…" });
+    fetchJSON("/mc-files?key=" + tab, { method: "PUT", body: JSON.stringify({ content: drafts[tab] || "" }) })
+      .then(function () { setStatus({ kind: "ok", msg: "saved ✓" }); })
+      .catch(function (e) { setStatus({ kind: "err", msg: "save failed: " + (e && e.message ? e.message : e) }); });
+  }, [tab, drafts]);
+  const dirty = (drafts[tab] || "") !== (initial[tab] || "");
+  return h("div", { className: "mc-card", style: { marginTop: 10 } },
+    h("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
+      MEM_FILE_META.map(function (m) {
+        return h("button", {
+          key: m.key,
+          className: "mc-btn" + (m.key === tab ? " primary" : ""),
+          onClick: function () { setTab(m.key); setStatus(null); }
+        }, m.label);
+      }),
+      h("span", { style: { flex: 1 } }),
+      dirty ? h("span", { className: "mc-sub", style: { color: "var(--mc-accent-2)" } }, "unsaved") : null,
+      h("button", { className: "mc-btn primary", disabled: !dirty, onClick: onSave }, "Save")),
+    h("div", { className: "mc-sub", style: { margin: "6px 0" } },
+      meta.desc + "  ·  ", h("span", { className: "mono" }, paths[tab] || "")),
+    h("textarea", {
+      className: "mc-textarea",
+      value: draft,
+      spellCheck: false,
+      onChange: function (e) { onEdit(e.target.value); },
+      style: { width: "100%", minHeight: 320, fontFamily: "ui-monospace,Menlo,monospace", fontSize: "12px", lineHeight: 1.5, boxSizing: "border-box" }
+    }),
+    status ? h("div", { className: "mc-sub", style: { marginTop: 6, color: status.kind === "err" ? "#fca5a5" : status.kind === "ok" ? "#6ee7b7" : "var(--mc-muted)" } }, status.msg) : null);
 }
 
 // ---- Tools & MCP ----
@@ -995,7 +1147,7 @@ function SessionsView(p) {
           h("th", null, ""))),
         h("tbody", null, sorted.map(function (s) {
           const nm = s.title || s.display_name || "(untitled)";
-          return h("tr", { key: s.id, onClick: function () { p.nav({ name: "session", id: s.id }); }, style: { cursor: "pointer" } },
+          return h("tr", { key: s.id, onClick: function () { p.nav({ name: "sessionchat", id: s.id }); }, style: { cursor: "pointer" } },
             h("td", null, h("strong", null, nm)),
             h("td", { className: "mono" }, String(s.id).slice(0, 12)),
             h("td", null, str(s.source)),
@@ -1278,12 +1430,10 @@ function App() {
         h("div", { style: { marginTop: 4 } }, "read-only · Stage 1"))),
     h("div", { className: "mc-main" },
       h(Header, { view: active, onRefresh: onRefresh, onToggleTheme: onToggleTheme, theme: theme }),
-      h("div", { className: "mc-body" }, view.name === "session"
-        ? h(SessionDetail, Object.assign({ nav: nav, onBack: onBack, id: view.id }, rp))
+      h("div", { className: "mc-body" }, (view.name === "session" || view.name === "sessionchat")
+        ? h(ChatPanel, Object.assign({ onBack: onBack, sessionId: view.id }, rp))
         : view.name === "chat"
         ? h(ChatPanel, Object.assign({ onBack: onBack }, rp))
-        : view.name === "sessionchat"
-        ? h(ChatPanel, Object.assign({ onBack: onBack, sessionId: view.id }, rp))
         : h(Body, Object.assign({ nav: nav, onBack: onBack }, rp)))));
 }
 
@@ -1396,7 +1546,7 @@ function ChatPanel(p) {
         const conv = arr
           .filter(function (m) { return m && (m.role === "user" || m.role === "assistant" || m.role === "tool"); })
           .map(function (m) {
-            return { role: m.role, text: m.content || m.text || "", think: "", tools: (m.tool_calls || []).map(function (tc) { return (tc.name || tc.tool_name || "tool"); }), tool_name: m.tool_name || null, tool_calls: m.tool_calls || null, _results: [] };
+            return { role: m.role, text: m.content || m.text || "", think: m.reasoning || m.thinking || m.thought || "", tools: (m.tool_calls || []).map(function (tc) { return (tc.name || tc.tool_name || "tool"); }), tool_name: m.tool_name || null, tool_calls: m.tool_calls || null, _results: [] };
           });
         if (conv.length) setMsgs(conv);
       })
@@ -1464,6 +1614,10 @@ function ChatPanel(p) {
       const cur = msgRef.current; if (cur) { cur.text = pl.text || cur.text; setMsgs(function (a) { return a.slice(); }); }
       msgRef.current = null; setTyping(false); setBusy(false);
     } else if (t === "tool.call" || t === "tool.start") {
+      // Original behaviour: just record the tool name in the chips row.
+      // (The gateway's tool.start carries no arguments, so pushing it into
+      // tool_calls would render empty stub blocks. Real call args come from
+      // history, which renderToolCalls already handles.)
       const cur = msgRef.current; if (cur) { cur.tools = cur.tools.concat([pl.name || "tool"]); setMsgs(function (a) { return a.slice(); }); }
     } else if (t === "error") {
       setErr(pl.message || "agent error"); setTyping(false); setBusy(false);
@@ -1512,15 +1666,12 @@ function ChatPanel(p) {
     return h("div", { key: i, className: cn("mc-msg", mm.role === "user" ? "user" : "assistant") + (isToolResult ? " tool-result-msg" : "") },
       h("div", { className: "role" }, mm.role + (mm.tool_name && mm.role !== "tool" ? " · " + mm.tool_name : "")),
       isToolResult
-        ? renderToolResult(mm)
+        ? h("div", { className: "body", style: { fontFamily: "ui-monospace,Menlo,monospace", fontSize: "11.5px", whiteSpace: "pre-wrap", color: "var(--mc-muted)" } }, str(mm.text))
         : (mm.role === "user"
           ? h("div", { className: "body" }, str(mm.text))
           : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(mm.text) } })),
-      (tools.length && !isToolResult && !merged) ? h("div", { className: "tools" }, "tools used:", tools) : null,
+      (tools.length && !isToolResult && !merged && !(mm.tool_calls && mm.tool_calls.length)) ? h("div", { className: "tools" }, "tools used:", tools) : null,
       renderToolCalls(mm),
-      merged ? h("div", { className: "mc-toolresults" }, mm._results.map(function (r, j) {
-        return h("div", { key: j, className: "mc-toolresult-wrap" }, renderToolResult(r));
-      })) : null,
       mm.think ? h("div", { className: "think" }, h("strong", null, "thinking: "), h("span", { dangerouslySetInnerHTML: { __html: mdToHtml(mm.think) } })) : null);
   });
   const typingRow = typing ? h("div", { className: "mc-msg assistant" },
@@ -1545,35 +1696,7 @@ function ChatPanel(p) {
       h("button", { className: "mc-btn primary", type: "submit", disabled: busy }, busy ? "…" : "Send")));
 }
 
-function SessionDetail(p) {
-  const m = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id) + "/messages?limit=400"); }, [p.id]);
-  const meta = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id)); }, [p.id]);
-  const title = (meta.data && (meta.data.title || meta.data.name)) || p.id;
-  return h("div", null,
-    h("div", { className: "mc-chatbar", style: { alignItems: "center" } },
-      BackBtn({ onClick: p.onBack }),
-      h("button", { className: "mc-btn primary", onClick: function () { p.nav({ name: "sessionchat", id: p.id }); } }, "Resume & chat"),
-      h("h2", { className: "mc-h", style: { marginTop: 0, marginLeft: 10 } }, title),
-      meta.data ? h("span", { className: "mc-chat-meta" },
-        "  ·  " + str(meta.data.source || "cli") + "  ·  " + (meta.data.started_at ? timeAgo(meta.data.started_at * 1000) : "")) : null),
-    m.loading ? h("div", { className: "mc-center" }, Spinner())
-      : m.error ? ErrBox({ error: m.error })
-      : h("div", { className: "mc-chat" }, mergeToolResults(m.data && m.data.messages ? m.data.messages : []).map(function (msg, i) {
-          const role = (msg.role || "assistant").toLowerCase();
-          const isToolResult = role === "tool" || !!msg.tool_name;
-          // A merged assistant message may carry _results (its tool outputs).
-          const merged = msg._results && msg._results.length;
-          return h("div", { key: i, className: cn("mc-msg", role === "user" ? "user" : "assistant") + (isToolResult ? " tool-result-msg" : "") },
-            h("div", { className: "role" }, role + (msg.tool_name && role !== "tool" ? " · " + msg.tool_name : "")),
-            isToolResult
-              ? renderToolResult(msg)
-              : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(msg.content) } }),
-            renderToolCalls(msg),
-            merged ? h("div", { className: "mc-toolresults" }, msg._results.map(function (r, j) {
-              return h("div", { key: j, className: "mc-toolresult-wrap" }, renderToolResult(r));
-            })) : null);
-        })));
-}
+
 
 // Error boundary so a throw shows the message instead of a blank page.
 class EB extends React.Component {
