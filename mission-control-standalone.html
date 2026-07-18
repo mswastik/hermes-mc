@@ -206,6 +206,14 @@
   @keyframes pulse{50%{opacity:.3}}
   .mc-chat-meta{font-size:12px;color:var(--mc-muted)}
   .mc-chip{display:inline-block;background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:6px;padding:1px 7px;margin:2px;font-size:11px;font-family:ui-monospace,Menlo,monospace;color:var(--mc-fg)}
+  .mc-toolcalls{margin-top:6px;display:flex;flex-direction:column;gap:3px}
+  .mc-toolcall{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--mc-panel-2);border:1px solid var(--mc-border);border-left:3px solid var(--mc-accent-2);border-radius:5px;padding:3px 8px;color:var(--mc-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mc-toolresult{margin-top:6px;border:1px dashed var(--mc-border);border-radius:6px;padding:5px 8px;background:var(--mc-panel-2)}
+  .mc-toolresult.compact{padding:3px 8px}
+  .mc-toolresults{margin-top:6px;display:flex;flex-direction:column;gap:5px;border-left:2px solid var(--mc-border);padding-left:8px}
+  .mc-toolresult-wrap{display:block}
+  .mc-toolresult-tag{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--mc-accent-2);margin-right:6px;white-space:nowrap}
+  .mc-toolresult-body{font-size:12px;color:var(--mc-muted)}
   .mc-spacer{flex:1 1 auto}
   .mc-select{background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:8px;color:var(--mc-fg);padding:5px 8px;font-size:12px;max-width:240px}
   .mc-typing{display:inline-flex;align-items:center;gap:4px;color:var(--mc-muted);font-style:italic}
@@ -355,7 +363,13 @@ function mdToHtml(src) {
       if (m) txt = m[1];
       return "<pre class='md-pre'><code>" + esc(JSON.stringify(JSON.parse(txt), null, 2)) + "</code></pre>";
     } catch (e) {
-      return "<pre class='md-pre'><code>" + esc(raw) + "</code></pre>";
+      // Fallback: the blob may contain literal backslash-escapes (\n \t \") that
+      // aren't valid JSON. Unescape them so the text is readable instead
+      // of showing raw "\n431" etc.
+      const cleaned = String(raw)
+        .replace(/\n/g, "\n").replace(/\t/g, "\t").replace(/\"/g, '"')
+        .replace(/\\/g, "\\");
+      return "<pre class='md-pre'><code>" + esc(cleaned) + "</code></pre>";
     }
   }
   // <untrusted_tool_result source="X"> ...json... </untrusted_tool_result>
@@ -421,7 +435,72 @@ function mdToHtml(src) {
   }).join("\n");
   return s;
 }
-function fmt(n) { if (n == null) return "-"; return n.toLocaleString(); }
+function fmt(n) { if (n == null) return "-"; if (typeof n === "number" && n >= 1000) return n.toLocaleString(); return n; }
+// ---- merge tool results into their calling assistant message ----
+// Hermes stores an assistant turn (with tool_calls) and the tool's result
+// as TWO separate messages. Combine them so the dashboard shows ONE block:
+// call metadata on top, result(s) rendered beneath it.
+function mergeToolResults(messages) {
+  const out = [];
+  let pending = null; // assistant msg currently collecting results
+  (messages || []).forEach(function (m) {
+    const isResult = (m.role === "tool" || (m.role || "").toLowerCase() === "tool") && m.tool_name;
+    if (isResult && pending) {
+      pending._results = pending._results || [];
+      pending._results.push(m);
+      return;
+    }
+    if ((m.tool_calls && m.tool_calls.length) && !pending) {
+      pending = m; out.push(pending); return;
+    }
+    pending = null;
+    out.push(m);
+  });
+  return out;
+}
+// Parses msg.tool_calls[].function.arguments (a JSON *string*) and emits a
+// short, per-tool-type summary so the dashboard shows WHAT the tool did
+// (file edited, command run, files searched) — matching the desktop UI.
+function parseArgs(tc) {
+  const fn = tc && tc.function; if (!fn) return null;
+  let a = fn.arguments;
+  if (typeof a === "string") { try { a = JSON.parse(a); } catch (e) { a = null; } }
+  return { name: fn.name, args: a || {} };
+}
+function renderToolCalls(msg) {
+  const calls = (msg.tool_calls || []).map(parseArgs).filter(Boolean);
+  if (!calls.length) return null;
+  const items = calls.map(function (c, i) {
+    const a = c.args; let label = c.name;
+    if (c.name === "patch" || c.name === "write_file") {
+      label = (c.name === "patch" ? "✎ patch" : "✎ write") + " → " + (a.path || a.file_path || "");
+    } else if (c.name === "read_file") {
+      label = "📄 read " + (a.path || "") + (a.offset ? " (line " + a.offset + ")" : "");
+    } else if (c.name === "terminal") {
+      const cmd = (a.command || "").replace(/\n/g, " ⏎ ");
+      label = "⚡ " + (cmd.length > 120 ? cmd.slice(0, 120) + "…" : cmd);
+    } else if (c.name === "search_files") {
+      label = "🔍 search " + (a.pattern || "") + " in " + (a.path || a.target || "");
+    } else if (c.name === "web_search" || c.name === "web_extract") {
+      label = "🌐 " + c.name + ": " + (a.query || a.url || a.urls || "");
+    } else if (a && Object.keys(a).length) {
+      label = "⚙ " + c.name + ": " + JSON.stringify(a).slice(0, 160);
+    }
+    return h("div", { key: i, className: "mc-toolcall", title: c.name },
+      h("span", { className: "mc-toolcall-name" }, label));
+  });
+  return h("div", { className: "mc-toolcalls" }, items);
+}
+function renderToolResult(msg) {
+  if (msg.role !== "tool" && !msg.tool_name) return null;
+  const txt = str(msg.content);
+  // Tool-result lines like "[patch] replace in ~/x (N chars result)" are
+  // status summaries — show them compactly, not as a full prose block.
+  const compact = /^\[(patch|read_file|write_file|terminal|search_files|web_search|web_extract|execute_code)\]\s/m.test(txt);
+  return h("div", { className: "mc-toolresult" + (compact ? " compact" : "") },
+    h("span", { className: "mc-toolresult-tag" }, "⚙ " + (msg.tool_name || "tool")),
+    h("span", { className: "mc-toolresult-body", dangerouslySetInnerHTML: { __html: mdToHtml(txt) } }));
+}
 function gatewayKind(d) {
   const running = d.gateway_running;
   if (running === false) return { kind: "bad", label: "stopped" };
@@ -1279,6 +1358,11 @@ function ChatPanel(p) {
   const [models, setModels] = useS(null);   // [{id, provider, label}]
   const [curModel, setCurModel] = useS("");
   const [connState, setConnState] = useS("idle"); // idle | connecting | connected | error
+  const [meta, setMeta] = useS(null);
+  React.useEffect(function () {
+    if (!p.sessionId) return;
+    fetchJSON("/api/sessions/" + encodeURIComponent(p.sessionId)).then(function (j) { setMeta(j && j.data ? j.data : null); }).catch(function () {});
+  }, [p.sessionId]);
   const wsRef = React.useRef(null);
   const msgRef = React.useRef(null);
   const sidRef = React.useRef(p.sessionId || null);
@@ -1310,9 +1394,9 @@ function ChatPanel(p) {
       .then(function (j) {
         const arr = (j && (j.messages || j)) || [];
         const conv = arr
-          .filter(function (m) { return m && (m.role === "user" || m.role === "assistant"); })
+          .filter(function (m) { return m && (m.role === "user" || m.role === "assistant" || m.role === "tool"); })
           .map(function (m) {
-            return { role: m.role, text: m.content || m.text || "", think: "", tools: [] };
+            return { role: m.role, text: m.content || m.text || "", think: "", tools: (m.tool_calls || []).map(function (tc) { return (tc.name || tc.tool_name || "tool"); }), tool_name: m.tool_name || null, tool_calls: m.tool_calls || null, _results: [] };
           });
         if (conv.length) setMsgs(conv);
       })
@@ -1419,17 +1503,25 @@ function ChatPanel(p) {
   function onKey(e) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSubmit(e); }
   }
-  const rows = msgs.map(function (mm, i) {
+  const rows = mergeToolResults(msgs).map(function (mm, i) {
+    const isToolResult = mm.role === "tool" || !!mm.tool_name;
     const tools = (mm.tools || []).map(function (n, j) {
       return h("span", { key: j, className: "mc-chip", style: { borderColor: "var(--mc-accent-2)", color: "var(--mc-accent-2)" } }, "⚙ " + n);
     });
-    return h("div", { key: i, className: cn("mc-msg", mm.role === "user" ? "user" : "assistant") },
-      h("div", { className: "role" }, mm.role),
-      mm.role === "user"
-        ? h("div", { className: "body" }, str(mm.text))
-        : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(mm.text) } }),
-      mm.think ? h("div", { className: "think" }, h("strong", null, "thinking: "), h("span", { dangerouslySetInnerHTML: { __html: mdToHtml(mm.think) } })) : null,
-      tools.length ? h("div", { className: "tools" }, "tools used:", tools) : null);
+    const merged = mm._results && mm._results.length;
+    return h("div", { key: i, className: cn("mc-msg", mm.role === "user" ? "user" : "assistant") + (isToolResult ? " tool-result-msg" : "") },
+      h("div", { className: "role" }, mm.role + (mm.tool_name && mm.role !== "tool" ? " · " + mm.tool_name : "")),
+      isToolResult
+        ? renderToolResult(mm)
+        : (mm.role === "user"
+          ? h("div", { className: "body" }, str(mm.text))
+          : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(mm.text) } })),
+      (tools.length && !isToolResult && !merged) ? h("div", { className: "tools" }, "tools used:", tools) : null,
+      renderToolCalls(mm),
+      merged ? h("div", { className: "mc-toolresults" }, mm._results.map(function (r, j) {
+        return h("div", { key: j, className: "mc-toolresult-wrap" }, renderToolResult(r));
+      })) : null,
+      mm.think ? h("div", { className: "think" }, h("strong", null, "thinking: "), h("span", { dangerouslySetInnerHTML: { __html: mdToHtml(mm.think) } })) : null);
   });
   const typingRow = typing ? h("div", { className: "mc-msg assistant" },
     h("div", { className: "role" }, "assistant"),
@@ -1437,7 +1529,7 @@ function ChatPanel(p) {
   return h("div", { className: "mc-chatwrap" },
     h("div", { className: "mc-chatbar" },
       p.onBack ? h("button", { className: "mc-btn", onClick: p.onBack }, "← Back") : null,
-      h("span", { className: "mc-chat-meta" }, p.sessionId ? "Resuming " + p.sessionId : "New session"),
+      h("span", { className: "mc-chat-meta" }, p.sessionId ? ("Resuming " + (meta && (meta.title || meta.name) ? meta.title || meta.name : p.sessionId)) : "New session"),
       h("span", { className: "mc-spacer" }),
       h("span", { className: "mc-conn mc-conn-" + connState, title: "WS: " + CONN_LABEL[connState] },
         h("span", { className: "mc-dot" }), CONN_LABEL[connState]),
@@ -1466,14 +1558,19 @@ function SessionDetail(p) {
         "  ·  " + str(meta.data.source || "cli") + "  ·  " + (meta.data.started_at ? timeAgo(meta.data.started_at * 1000) : "")) : null),
     m.loading ? h("div", { className: "mc-center" }, Spinner())
       : m.error ? ErrBox({ error: m.error })
-      : h("div", { className: "mc-chat" }, (m.data && m.data.messages ? m.data.messages : []).map(function (msg, i) {
+      : h("div", { className: "mc-chat" }, mergeToolResults(m.data && m.data.messages ? m.data.messages : []).map(function (msg, i) {
           const role = (msg.role || "assistant").toLowerCase();
-          const tools = (msg.tool_calls || []).map(function (tc) { return tc.name || tc.tool_name || "tool"; });
-          return h("div", { key: i, className: cn("mc-msg", role === "user" ? "user" : "assistant") },
-            h("div", { className: "role" }, role + (msg.tool_name ? " · " + msg.tool_name : "")),
-            h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(msg.content) } }),
-            tools.length ? h("div", { className: "tools" }, tools.map(function (n, j) {
-              return h("span", { key: j, className: "mc-chip", style: { borderColor: "var(--mc-accent-2)", color: "var(--mc-accent-2)" } }, "⚙ " + n);
+          const isToolResult = role === "tool" || !!msg.tool_name;
+          // A merged assistant message may carry _results (its tool outputs).
+          const merged = msg._results && msg._results.length;
+          return h("div", { key: i, className: cn("mc-msg", role === "user" ? "user" : "assistant") + (isToolResult ? " tool-result-msg" : "") },
+            h("div", { className: "role" }, role + (msg.tool_name && role !== "tool" ? " · " + msg.tool_name : "")),
+            isToolResult
+              ? renderToolResult(msg)
+              : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(msg.content) } }),
+            renderToolCalls(msg),
+            merged ? h("div", { className: "mc-toolresults" }, msg._results.map(function (r, j) {
+              return h("div", { key: j, className: "mc-toolresult-wrap" }, renderToolResult(r));
             })) : null);
         })));
 }
