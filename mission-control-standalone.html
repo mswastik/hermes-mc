@@ -11,7 +11,7 @@
 <style>
   :root{
     --mc-bg:#0b0e14; --mc-panel:#121723; --mc-panel-2:#0f1420; --mc-border:#1e2636;
-    --mc-fg:#767d73; --mc-muted:#a3b1c2; --mc-faint:#7d8aa0;
+    --mc-fg:#f4f6fa; --mc-muted:#a3b1c2; --mc-faint:#7d8aa0;
     --mc-accent:#2dd4bf; --mc-accent-2:#38bdf8;
     --mc-good:#34d399; --mc-warn:#fbbf24; --mc-bad:#f87171; --mc-info:#60a5fa;
     --mc-rail:#0d1119;
@@ -23,6 +23,10 @@
     --mc-good:#059669; --mc-warn:#d97706; --mc-bad:#dc2626; --mc-info:#2563eb;
     --mc-rail:#e9edf3;
   }
+  [data-theme="dark"]{
+    --mc-fg:#f4f6fa;
+    }
+  
   [data-theme="light"] .mc-logo{color:#fff}
   [data-theme="light"] .mc-nav button:hover{background:#e3e8f0}
   [data-theme="light"] .mc-nav button.active{background:#d6ecf2;color:#0b3b46}
@@ -52,7 +56,6 @@
   [data-theme="light"] .mc-empty{background:#fff;color:var(--mc-faint)}
   [data-theme="light"] .mc-err{background:#fde8e8;border-color:#f5c2c2;color:#b91c1c}
   [data-theme="light"] .mc-logs{background:#0b0e14;color:#d4dae4}
-  [data-theme="light"] pre{color:#ddd}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--mc-bg);color:var(--mc-fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -236,16 +239,17 @@
   .md h1{font-size:16px}.md h2{font-size:15px}.md h3{font-size:14px}.md h4{font-size:13px}
   .md ul{margin:0 0 8px;padding-left:20px}
   .md li{margin:2px 0}
-  .md code{background:#0a0d13;color:#ddd; border:1px solid var(--mc-border);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
-  .md pre{background:#0a0d13;color:#ddd; border:1px solid var(--mc-border);border-radius:8px;padding:10px;overflow-x:auto;margin:0 0 8px}
+  .md code{background:var(--mc-panel-2);color:var(--mc-fg);border:1px solid var(--mc-border);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .md pre{background:var(--mc-panel-2);color:var(--mc-fg);border:1px solid var(--mc-border);border-radius:8px;padding:10px;overflow-x:auto;margin:0 0 8px}
   .md pre code{background:none;border:0;padding:0}
   .md strong{color:var(--mc-fg);font-weight:700}
   /* ---- JSON collapsible ---- */
-  .md-json{margin:0 0 8px;border:1px solid var(--mc-border);border-radius:8px;overflow:hidden;background:#0a0d13}
-  .md-json>summary{cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:var(--mc-accent-2);background:var(--mc-panel-2);user-select:none}
-  .md-json>summary::before{content:"\25BC ";font-size:9px}
-  .md-json:not([open])>summary::before{content:"\25B6 "}
-  .md-json .md-pre{margin:0;border:0;border-radius:0}
+  .md-json{margin:0 0 8px;border:1px solid var(--mc-border);border-radius:8px;overflow:hidden;background:var(--mc-panel-2)}
+  .md-json>summary{cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:var(--mc-accent-2);background:var(--mc-panel-2);user-select:none;list-style:none}
+  .md-json>summary::-webkit-details-marker{display:none}
+  .md-json>summary::before{content:"\25B8  ";font-size:9px}
+  .md-json:not([open])>summary::before{content:"\25B6  "}
+  .md-json .md-pre{background:none;color:var(--mc-fg);margin:0;border:0;border-radius:0}
   /* ---- markdown table ---- */
   .md-table{border-collapse:collapse;margin:0 0 8px;width:100%;font-size:12px}
   .md-table th,.md-table td{border:1px solid var(--mc-border);padding:4px 8px;text-align:left;vertical-align:top}
@@ -307,9 +311,10 @@ function useAsync(fn, deps) {
 }
 function useSort(rows, initialKey) {
   const [key, setKey] = useS(initialKey || null);
-  const [dir, setDir] = useS(1);
+  // Default direction: dates newest-first, everything else ascending.
+  const [dir, setDir] = useS((initialKey === "started_at" || initialKey === "ended_at" || initialKey === "last_active") ? -1 : 1);
   const onSort = useC(function (k) {
-    if (k === key) setDir(-dir); else { setKey(k); setDir(1); }
+    if (k === key) setDir(-dir); else { setKey(k); setDir((k === "started_at" || k === "ended_at" || k === "last_active") ? -1 : 1); }
   }, [key]);
   const sorted = useM(function () {
     if (!key || !rows) return rows;
@@ -333,21 +338,42 @@ function timeAgo(t) {
   if (s < 86400) return Math.floor(s / 3600) + "h ago";
   return Math.floor(s / 86400) + "d ago";
 }
+// "Modified" = last_active if present, else started_at (epoch seconds).
+function modifiedAt(s) { return (s && (s.last_active || s.started_at)) || 0; }
 function str(v) { if (v === null || v === undefined) return "-"; if (v === true) return "yes"; if (v === false) return "no"; if (typeof v === "object") return JSON.stringify(v); return String(v); }
 // ---- minimal markdown -> safe HTML (escape first, then a few transforms) ----
 function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 function mdToHtml(src) {
   if (!src) return "";
   let s = esc(String(src));
-  // fenced code blocks (json ones become collapsible)
+  // Extract + pretty-print the first JSON blob ({...} or [...]) from a string.
+  // Falls back to the raw (escaped) text if no valid JSON is found.
+  function jsonBlob(raw) {
+    let txt = raw;
+    try {
+      const m = raw.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      if (m) txt = m[1];
+      return "<pre class='md-pre'><code>" + esc(JSON.stringify(JSON.parse(txt), null, 2)) + "</code></pre>";
+    } catch (e) {
+      return "<pre class='md-pre'><code>" + esc(raw) + "</code></pre>";
+    }
+  }
+  // <untrusted_tool_result source="X"> ...json... </untrusted_tool_result>
+  // -> collapsible labeled by source (handles agent tool-result wrappers).
+  s = s.replace(/<untrusted_tool_result[^>]*source="([^"]*)"[^>]*>([\s\S]*?)<\/untrusted_tool_result>/gi, function (_, src, body) {
+    return "\n<details class='md-json'><summary>tool: " + esc(src) + "</summary>" + jsonBlob(body) + "</details>";
+  });
+  // fenced code blocks (json ones become collapsible, default COLLAPSED)
   s = s.replace(/```(\w*)\n([\s\S]*?)```/g, function (_, lang, code) {
     code = code.replace(/\n$/, "");
     if ((lang || "").toLowerCase() === "json") {
-      let pretty = code;
-      try { pretty = JSON.stringify(JSON.parse(code), null, 2); } catch (e) {}
-      return "<details class='md-json' open><summary>JSON</summary><pre class='md-pre'><code>" + esc(pretty) + "</code></pre></details>";
+      return "\n<details class='md-json'><summary>JSON</summary>" + jsonBlob(code) + "</details>";
     }
-    return "<pre class='md-pre'><code>" + code + "</code></pre>";
+    return "\n<pre class='md-pre'><code>" + code + "</code></pre>";
+  });
+  // bare JSON objects/arrays (not already fenced / not a tool-result) -> collapsible too.
+  s = s.replace(/(^|\n)((?:\{[\s\S]*\}|\[[\s\S]*\]))\n?$/g, function (_, pre, blob) {
+    return pre + "\n<details class='md-json'><summary>JSON</summary>" + jsonBlob(blob) + "</details>";
   });
   // markdown tables: header row, separator row, body rows
   s = s.replace(/(?:^|\n)(\|.*\|\n\|[-: |]+\|\n(?:\|.*\|\n?)*)/g, function (_, block) {
@@ -378,8 +404,8 @@ function mdToHtml(src) {
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
        .replace(/\*([^*]+)\*/g, "<em>$1</em>")
        .replace(/`([^`]+)`/g, "<code class='md-code'>$1</code>");
-  // [tag] tokens -> pills (only standalone bracketed words, not refs/indices)
-  s = s.replace(/(^|[\s(\[])(\[[a-z0-9_.\-]{1,40}\])(?=[\s).,;:!?]|$)/gi, function (_, pre, tag) {
+  // [tag] tokens -> pills (standalone bracketed words; allow cased alnum + _ - .)
+  s = s.replace(/(^|[\s(\[])(\[[A-Za-z0-9_.\-]{1,48}\])(?=[\s).,;:!?]|$)/g, function (_, pre, tag) {
     return pre + "<span class='mc-tag'>" + tag + "</span>";
   });
   // unordered lists
@@ -662,7 +688,7 @@ function CronView(p) {
           h("dt", null, "State"), h("dd", null, Pill({ kind: (selJob.enabled && !selJob.paused_at) ? "good" : "warn", children: selJob.paused_at ? "paused" : (selJob.enabled ? "enabled" : "disabled") })),
           h("dt", null, "Paused reason"), h("dd", null, selJob.paused_reason || "-")),
         h("div", { style: { marginTop: 14 } }, h("div", { className: "mc-muted", style: { fontSize: 12, marginBottom: 6 } }, "Prompt")),
-        h("pre", { style: { whiteSpace: "pre-wrap", background: "#0a0d13", color: "#aaa", padding: 10, borderRadius: 8, fontSize: 12, margin: 0 } }, selJob.prompt || "-")) : Empty())));
+        h("pre", { style: { whiteSpace: "pre-wrap", background: "var(--mc-panel-2)", color: "var(--mc-fg)", border: "1px solid var(--mc-border)", padding: 10, borderRadius: 8, fontSize: 12, margin: 0 } }, selJob.prompt || "-")) : Empty())));
 }
 
 // ---- Security & Privacy ----
@@ -864,7 +890,7 @@ function SessionsView(p) {
   }
   let rows = list.data ? (list.data.sessions || list.data) : [];
   if (q.trim()) rows = rows.filter(function (s) { return ((s.title || "") + " " + (s.display_name || "") + " " + (s.id || "") + " " + (s.source || "")).toLowerCase().indexOf(q.toLowerCase()) >= 0; });
-  const { sorted, sortKey, sortDir, onSort } = useSort(rows, "id");
+  const { sorted, sortKey, sortDir, onSort } = useSort(rows, "last_active");
   if (stats.loading || list.loading) return h("div", { className: "mc-center" }, Spinner());
   if (stats.error) return ErrBox({ error: stats.error });
   if (list.error) return ErrBox({ error: list.error });
@@ -885,6 +911,7 @@ function SessionsView(p) {
           h("th", { onClick: function () { onSort("id"); } }, "ID" + Arrow("id")),
           h("th", { onClick: function () { onSort("source"); } }, "Source" + Arrow("source")),
           h("th", { onClick: function () { onSort("started_at"); } }, "Started" + Arrow("started_at")),
+          h("th", { onClick: function () { onSort("last_active"); } }, "Modified" + Arrow("last_active")),
           h("th", null, "Messages"),
           h("th", null, ""))),
         h("tbody", null, sorted.map(function (s) {
@@ -894,6 +921,7 @@ function SessionsView(p) {
             h("td", { className: "mono" }, String(s.id).slice(0, 12)),
             h("td", null, str(s.source)),
             h("td", null, timeAgo((s.started_at || 0) * 1000)),
+            h("td", null, timeAgo(modifiedAt(s) * 1000)),
             h("td", null, str(s.message_count != null ? s.message_count : (s.messages ? s.messages.length : "-"))),
             h("td", { style: { textAlign: "right" } },
               h("button", { className: "mc-btn danger sm", title: "Delete session",
@@ -1110,16 +1138,49 @@ function Header(p) {
 }
 
 function App() {
-  const [view, setView] = useS({ name: "overview" });
+  // ---- hash router: keep view state in location.hash so refresh + back/forward work ----
+  function viewToHash(v) {
+    if (!v || !v.name) return "#/overview";
+    if (v.name === "session" || v.name === "sessionchat") return "#/" + v.name + "/" + encodeURIComponent(v.id || "");
+    return "#/" + v.name;
+  }
+  function hashToView() {
+    const h = (location.hash || "").replace(/^#\/?/, "");
+    if (!h) return { name: "overview" };
+    const parts = h.split("/");
+    const name = parts[0];
+    if ((name === "session" || name === "sessionchat") && parts[1]) {
+      return { name: name, id: decodeURIComponent(parts[1]) };
+    }
+    return { name: name };
+  }
+  const [view, setView] = useS(hashToView());
   const [refreshTick, setRefreshTick] = useS(0);
   const [theme, setTheme] = useS((typeof localStorage !== "undefined" && localStorage.getItem("mc-theme")) || "dark");
-  const nav = useC(function (v) { setView(v); window.scrollTo(0, 0); }, []);
-  const onBack = useC(function () { setView({ name: "overview" }); }, []);
+  // Apply the theme to <html> (documentElement) so the :root/body layer
+  // inherits it — setting it only on a child div can't reach body's var() reads.
+  try { document.documentElement.setAttribute("data-theme", theme); } catch (e) {}
+  const nav = useC(function (v) {
+    setView(v);
+    try { history.pushState(null, "", viewToHash(v)); } catch (e) {}
+    window.scrollTo(0, 0);
+  }, []);
+  // Sync browser back/forward into React view state.
+  React.useEffect(function () {
+    function onPop() { setView(hashToView()); }
+    window.addEventListener("popstate", onPop);
+    return function () { window.removeEventListener("popstate", onPop); };
+  }, []);
+  const onBack = useC(function () {
+    if (location.hash && location.hash !== "#/overview") { history.back(); }
+    else { setView({ name: "overview" }); }
+  }, []);
   const onRefresh = useC(function () { setRefreshTick(function (t) { return t + 1; }); }, []);
   const onToggleTheme = useC(function () {
     setTheme(function (t) {
       const nt = t === "dark" ? "light" : "dark";
       try { localStorage.setItem("mc-theme", nt); } catch (e) {}
+      try { document.documentElement.setAttribute("data-theme", nt); } catch (e) {}
       return nt;
     });
   }, []);
@@ -1245,7 +1306,7 @@ function ChatPanel(p) {
   // Load prior message history when resuming an existing session.
   React.useEffect(function () {
     if (!p.sessionId) return;
-    fetchJSON("/api/sessions/" + encodeURIComponent(p.sessionId) + "/messages?limit=200")
+    fetchJSON("/api/sessions/" + encodeURIComponent(p.sessionId) + "/messages?limit=400")
       .then(function (j) {
         const arr = (j && (j.messages || j)) || [];
         const conv = arr
@@ -1393,22 +1454,27 @@ function ChatPanel(p) {
 }
 
 function SessionDetail(p) {
-  const m = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id) + "/messages?limit=200"); }, [p.id]);
+  const m = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id) + "/messages?limit=400"); }, [p.id]);
   const meta = useAsync(function () { return fetchJSON("/api/sessions/" + encodeURIComponent(p.id)); }, [p.id]);
+  const title = (meta.data && (meta.data.title || meta.data.name)) || p.id;
   return h("div", null,
-    h("div", { className: "mc-chatbar" },
+    h("div", { className: "mc-chatbar", style: { alignItems: "center" } },
       BackBtn({ onClick: p.onBack }),
       h("button", { className: "mc-btn primary", onClick: function () { p.nav({ name: "sessionchat", id: p.id }); } }, "Resume & chat"),
-    h("h2", { className: "mc-h", style: { marginTop: 0 } }, meta.data ? str(meta.data.name || p.id) : "Session"),
-    //h("div", { className: "mc-sub" }, h("span", { className: "mc-id" }, p.id)),
-      meta.data ? "  ·  " + str(meta.data.source || "cli") + "  ·  " + (meta.data.started_at ? timeAgo(meta.data.started_at * 1000) : "") : ""),
+      h("h2", { className: "mc-h", style: { marginTop: 0, marginLeft: 10 } }, title),
+      meta.data ? h("span", { className: "mc-chat-meta" },
+        "  ·  " + str(meta.data.source || "cli") + "  ·  " + (meta.data.started_at ? timeAgo(meta.data.started_at * 1000) : "")) : null),
     m.loading ? h("div", { className: "mc-center" }, Spinner())
       : m.error ? ErrBox({ error: m.error })
       : h("div", { className: "mc-chat" }, (m.data && m.data.messages ? m.data.messages : []).map(function (msg, i) {
           const role = (msg.role || "assistant").toLowerCase();
+          const tools = (msg.tool_calls || []).map(function (tc) { return tc.name || tc.tool_name || "tool"; });
           return h("div", { key: i, className: cn("mc-msg", role === "user" ? "user" : "assistant") },
-            h("div", { className: "role" }, role),
-            h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(msg.content) } }));
+            h("div", { className: "role" }, role + (msg.tool_name ? " · " + msg.tool_name : "")),
+            h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(msg.content) } }),
+            tools.length ? h("div", { className: "tools" }, tools.map(function (n, j) {
+              return h("span", { key: j, className: "mc-chip", style: { borderColor: "var(--mc-accent-2)", color: "var(--mc-accent-2)" } }, "⚙ " + n);
+            })) : null);
         })));
 }
 
