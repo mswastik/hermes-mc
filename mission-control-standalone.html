@@ -128,6 +128,7 @@
   .pill.info .d{background:var(--mc-info)}
   /* ---- master/detail ---- */
   .mc-split{display:flex;gap:16px;align-items:flex-start}
+  .mc-grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:0}
   .mc-list{flex:0 0 360px;max-width:360px;display:flex;flex-direction:column;gap:8px}
   .mc-card{background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.12s}
   .mc-card:hover{border-color:#2b3a52;background:#151c2a}
@@ -190,7 +191,7 @@
   .mc-msg.user{background:#16263a;align-self:flex-end;color:#f8f8f8}
   .mc-msg.assistant{background:var(--mc-panel-2);align-self:flex-start;border:1px solid var(--mc-border)}
   .mc-msg .role{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--mc-faint);margin-bottom:4px}
-  .mc-logs{background:#0a0d13;border:1px solid var(--mc-border);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;max-height:560px;overflow-y:auto;line-height:1.6}
+  .mc-logs{background:#0a0d13;border:1px solid var(--mc-border);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;max-height:810px;overflow-y:auto;line-height:1.6}
   .ln.err{color:var(--mc-bad)} .ln.warn{color:var(--mc-warn)} .ln.info{color:var(--mc-info)}
   /* ---- chat panel (resume / new session) ---- */
   .mc-chatwrap{display:flex;flex-direction:column;height:90vh;min-height:420px}
@@ -227,7 +228,38 @@
   .mc-spacer{flex:1 1 auto}
   .mc-textarea{background:var(--mc-panel-2);border:1px solid var(--mc-border);border-radius:8px;color:var(--mc-fg);padding:10px;resize:vertical;outline:none}
   .mc-textarea:focus{border-color:var(--mc-accent-2)}
-  .mc-typing{display:inline-flex;align-items:center;gap:4px;color:var(--mc-muted);font-style:italic}
+  .mc-profile-sw{position:relative}
+  .mc-profile-sw .mc-pname{font-weight:600}
+  .mc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mc-muted);margin-right:2px}
+  .mc-dot.on{background:#34d399}
+  .mc-dot.off{background:#f87171}
+  .mc-dropdown{position:absolute;top:calc(100% + 6px);right:0;z-index:50;min-width:240px;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:6px}
+  .mc-dropdown-head{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mc-muted);padding:4px 8px 6px}
+  .mc-dropdown-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;color:var(--mc-fg);padding:7px 8px;border-radius:7px;cursor:pointer;font-size:13px}
+  .mc-dropdown-item:hover{background:var(--mc-panel-2)}
+  .mc-dropdown-item.active{background:#16263a}
+  .mc-dropdown-item.create{color:var(--mc-accent-2);margin-top:4px;border-top:1px solid var(--mc-border);border-radius:0;padding-top:9px}
+  .mc-di-name{font-weight:600}
+  .mc-di-tag{font-size:10px;color:var(--mc-muted);border:1px solid var(--mc-border);border-radius:4px;padding:0 5px}
+  .mc-di-sub{margin-left:auto;font-size:11px;color:var(--mc-muted)}
+  .mc-profile-strip{display:flex;gap:10px;flex-wrap:wrap}
+  .mc-pcard{background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:10px;padding:12px 14px;min-width:180px;flex:1 1 180px;display:flex;flex-direction:column;gap:4px}
+  .mc-pcard.active{border-color:var(--mc-accent-2);box-shadow:inset 0 0 0 1px var(--mc-accent-2)}
+  .mc-pcard-top{display:flex;align-items:center;gap:8px}
+  .mc-pcard-name{font-weight:700;font-size:15px}
+  .mc-pcard-meta{font-size:12px;color:var(--mc-muted)}
+  .mc-pcard-sub{font-size:12px;color:var(--mc-muted);margin-bottom:6px}
+  .mc-list{display:flex;flex-direction:column;gap:6px}
+  .mc-list-row{display:flex;align-items:center;gap:10px;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:8px;padding:9px 12px}
+  .mc-list-row:hover{border-color:var(--mc-accent-2)}
+  .mc-lr-main{flex:1;min-width:0}
+  .mc-lr-main strong{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mc-lr-sub{font-size:11.5px;color:var(--mc-muted)}
+  .mc-lr-side{font-size:12px;color:var(--mc-muted);white-space:nowrap}
+  .mc-ok{color:#34d399;font-size:13px}
+  .mc-field{display:flex;flex-direction:column;gap:4px;margin:10px 0;font-size:13px}
+  .mc-check{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px;color:var(--mc-fg)}
+
   .mc-typing i{width:6px;height:6px;border-radius:50%;background:var(--mc-accent-2);display:inline-block;animation:mcblink 1s infinite}
   .mc-typing i:nth-child(2){animation-delay:.15s}
   .mc-typing i:nth-child(3){animation-delay:.3s}
@@ -704,50 +736,13 @@ function TreeNode(p) {
 
 // =================== VIEWS ===================
 
-// ---- Overview ----
-function OverviewView(p) {
-  const s = useAsync(function () { return fetchJSON("/api/status"); }, [p.refreshTick]);
-  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
-  if (s.loading) return h("div", { className: "mc-center" }, Spinner());
-  if (s.error) return ErrBox({ error: s.error });
-  const d = s.data || {};
-  const gk = gatewayKind(d);
-  const platforms = d.gateway_platforms || {};
-  const platList = Object.keys(platforms).map(function (k) {
-    const v = platforms[k] || {};
-    const ok = v.connected !== false && v.state !== "disconnected";
-    return { k: k, ok: ok, state: v.state || (ok ? "connected" : "offline") };
-  });
-  return h("div", null,
-    Section({ title: "Runtime" },
-      h("div", { className: "mc-stats" },
-        Stat({ k: "Hermes version", v: d.version }),
-        Stat({ k: "Gateway", v: gk.label, vclass: gk.kind }),
-        Stat({ k: "Active agents", v: fmt(d.active_agents) }),
-        Stat({ k: "Active sessions", v: fmt(d.active_sessions) }),
-        Stat({ k: "Gateway busy", v: d.gateway_busy ? "yes" : "no", vclass: d.gateway_busy ? "warn" : "good" }),
-        Stat({ k: "Drainable", v: d.gateway_drainable ? "yes" : "no" }))),
-    Section({ title: "Update" },
-      h("div", { className: "mc-stats" },
-        Stat({ k: "Latest version", v: d.latest_config_version || "-" }),
-        Stat({ k: "Can update", v: d.can_update_hermes ? "yes" : "no", vclass: d.can_update_hermes ? "warn" : "good" }))),
-    Section({ title: "Connected platforms (" + platList.length + ")" },
-      platList.length ? h("div", { className: "mc-stats" }, platList.map(function (pl) {
-        return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 15 } }, pl.k),
-          h("div", { className: "k" }, Pill({ kind: pillKind(pl.ok), children: pl.state })));
-      })) : Empty({ children: "No platforms connected." })),
-    cfg.data ? Section({ title: "Quick config highlights" },
-      h("div", { className: "mc-def" },
-        h("dt", null, "Default model"), h("dd", { className: "mono" }, str(cfg.data.model)),
-        h("dt", null, "Max live sessions"), h("dd", null, str(cfg.data.max_live_sessions)),
-        h("dt", null, "Memory"), h("dd", null, cfg.data.memory && cfg.data.memory.memory_enabled ? "enabled" : "disabled"),
-        h("dt", null, "Tirith security"), h("dd", null, (cfg.data.security && cfg.data.security.tirith_enabled) ? "enabled" : "disabled"),
-        h("dt", null, "Plugins"), h("dd", null, (cfg.data.plugins && cfg.data.plugins.enabled && cfg.data.plugins.enabled.length) ? cfg.data.plugins.enabled.join(', ') : "none"))) : null);
-}
-
 // ---- Models & Providers ----
 function ModelsView(p) {
-  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  const prof = p.profile || "default";
+  const cfg = useAsync(function () { return fetchJSON(profURL("/api/config", prof)); }, [p.refreshTick]);
+  const [editing, setEditing] = useS(false);
+  const [adding, setAdding] = useS(false);
+  const [saveErr, setSaveErr] = useS(null);
   if (cfg.loading) return h("div", { className: "mc-center" }, Spinner());
   if (cfg.error) return ErrBox({ error: cfg.error });
   const c = cfg.data || {};
@@ -759,16 +754,24 @@ function ModelsView(p) {
     const v = prov[k] || {};
     return { name: k, base: v.base_url || "-", models: (v.models || []).length };
   });
+  function setModel(m) {
+    setSaveErr(null);
+    fetchJSON("/mc-config?op=set_model&model=" + encodeURIComponent(m) + (prof !== "default" ? "&profile=" + encodeURIComponent(prof) : ""), { method: "PUT" })
+      .then(function () { if (p.onRefresh) p.onRefresh(); }).catch(function (e) { setSaveErr("set model failed: " + (e && e.message ? e.message : e)); });
+  }
   return h("div", null,
     Section({ title: "Default model" }, h("div", { className: "mc-def" },
-      h("dt", null, "model"), h("dd", { className: "mono" }, str(c.model)),
+      h("dt", null, "model"), h("dd", null, h("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+        h("span", { className: "mono" }, str(c.model)),
+        h("button", { className: "mc-btn sm", onClick: function () { setEditing(true); } }, "Edit"))),
       h("dt", null, "MoA preset"), h("dd", null, str((c.moa && c.moa.active_preset) || "-")))),
-    Section({ title: "Providers (" + provRows.length + ")" },
-      provRows.length ? h("table", { className: "mc-table" },
-        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "Base URL"), h("th", null, "Models"))),
-        h("tbody", null, provRows.map(function (r) {
-          return h("tr", { key: r.name }, h("td", null, h("span", { className: "mono" }, r.name)), h("td", { className: "mono" }, r.base), h("td", null, String(r.models)));
-        }))) : Empty()),
+    Section({ title: "Providers (" + (provRows.length + custom.length) + ")" },
+      h("div", { style: { marginBottom: 8 } }, h("button", { className: "mc-btn primary sm", onClick: function () { setAdding(true); } }, "+ Add provider")),
+      (provRows.length + custom.length) ? h("table", { className: "mc-table" },
+        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "API mode"), h("th", null, "Base URL"), h("th", null, "Model"))),
+        h("tbody", null,
+          provRows.map(function (r) { return h("tr", { key: r.name }, h("td", { className: "mono" }, r.name), h("td", null, "built-in"), h("td", { className: "mono" }, r.base), h("td", null, "-")); }),
+          custom.map(function (cp) { return h("tr", { key: cp.name }, h("td", { className: "mono" }, str(cp.name)), h("td", null, str(cp.api_mode)), h("td", { className: "mono" }, str(cp.base_url)), h("td", { className: "mono" }, str(cp.model))); }))) : Empty()),
     Section({ title: "Fallback providers" }, fb.length ? h("div", { className: "mc-stats" }, fb.map(function (f) {
       return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 14 } }, str(f.provider || f)));
     })) : Empty({ children: "None configured." }) ),
@@ -777,12 +780,43 @@ function ModelsView(p) {
       h("dt", null, "provider"), h("dd", { className: "mono" }, str(del.provider)),
       h("dt", null, "base_url"), h("dd", { className: "mono" }, str(del.base_url)),
       h("dt", null, "max children"), h("dd", null, str(del.max_concurrent_children)))),
-    Section({ title: "Custom providers (" + custom.length + ")" },
-      custom.length ? h("table", { className: "mc-table" },
-        h("thead", null, h("tr", null, h("th", null, "Name"), h("th", null, "API mode"), h("th", null, "Base URL"))),
-        h("tbody", null, custom.map(function (cp, i) {
-          return h("tr", { key: i }, h("td", { className: "mono" }, str(cp.name)), h("td", null, str(cp.api_mode)), h("td", { className: "mono" }, str(cp.base_url)));
-        }))) : Empty()));
+    saveErr ? h("div", { className: "mc-err" }, str(saveErr.message || saveErr)) : null,
+    editing ? h(SetModelModal, { current: c.model, onClose: function () { setEditing(false); }, onSave: function (m) { setEditing(false); setModel(m); } }) : null,
+    adding ? h(AddProviderModal, { onClose: function () { setAdding(false); }, onSave: function (prov) {
+      setAdding(false); setSaveErr(null);
+      fetchJSON("/mc-config?op=add_provider&profile=" + encodeURIComponent(prof), { method: "PUT", body: JSON.stringify(prov) })
+        .then(function () { if (p.onRefresh) p.onRefresh(); }).catch(function (e) { setSaveErr("add provider failed: " + (e && e.message ? e.message : e)); });
+    } }) : null);
+}
+function SetModelModal(p) {
+  const [m, setM] = useS(p.current || "");
+  return h("div", { className: "mc-modal-backdrop", onClick: function () { p.onClose && p.onClose(); } },
+    h("div", { className: "mc-modal", onClick: function (e) { e.stopPropagation(); } },
+      h("h3", { className: "mc-h" }, "Set default model"),
+      h("label", { className: "mc-field" }, h("span", null, "Model name"),
+        h("input", { className: "mc-input mono", placeholder: "e.g. hy3-free", value: m, onChange: function (e) { setM(e.target.value); } })),
+      h("div", { className: "mc-modal-actions" },
+        h("button", { className: "mc-btn", onClick: function () { p.onClose && p.onClose(); } }, "Cancel"),
+        h("button", { className: "mc-btn primary", disabled: !m.trim(), onClick: function () { p.onSave && p.onSave(m.trim()); } }, "Save"))));
+}
+function AddProviderModal(p) {
+  const [name, setName] = useS("");
+  const [apiMode, setApiMode] = useS("chat_completions");
+  const [baseUrl, setBaseUrl] = useS("");
+  const [model, setModel] = useS("");
+  const valid = name.trim() && baseUrl.trim() && model.trim();
+  return h("div", { className: "mc-modal-backdrop", onClick: function () { p.onClose && p.onClose(); } },
+    h("div", { className: "mc-modal", onClick: function (e) { e.stopPropagation(); } },
+      h("h3", { className: "mc-h" }, "Add provider"),
+      h("p", { className: "mc-sub" }, "Adds a custom provider to this profile's config.yaml (Hermes-native)."),
+      h("label", { className: "mc-field" }, h("span", null, "Name"), h("input", { className: "mc-input mono", placeholder: "e.g. openai", value: name, onChange: function (e) { setName(e.target.value); } })),
+      h("label", { className: "mc-field" }, h("span", null, "API mode"), h("select", { className: "mc-input", value: apiMode, onChange: function (e) { setApiMode(e.target.value); } },
+        h("option", { value: "chat_completions" }, "chat_completions"), h("option", { value: "responses" }, "responses"), h("option", { value: "anthropic" }, "anthropic"))),
+      h("label", { className: "mc-field" }, h("span", null, "Base URL"), h("input", { className: "mc-input mono", placeholder: "https://.../v1", value: baseUrl, onChange: function (e) { setBaseUrl(e.target.value); } })),
+      h("label", { className: "mc-field" }, h("span", null, "Model"), h("input", { className: "mc-input mono", placeholder: "e.g. gpt-4o", value: model, onChange: function (e) { setModel(e.target.value); } })),
+      h("div", { className: "mc-modal-actions" },
+        h("button", { className: "mc-btn", onClick: function () { p.onClose && p.onClose(); } }, "Cancel"),
+        h("button", { className: "mc-btn primary", disabled: !valid, onClick: function () { p.onSave && p.onSave({ name: name.trim(), api_mode: apiMode, base_url: baseUrl.trim(), model: model.trim() }); } }, "Add provider"))));
 }
 
 // ---- Connections / Platforms ----
@@ -799,8 +833,6 @@ function ConnectionsView(p) {
     const ok = v.connected !== false && v.state !== "disconnected";
     return { name: k, state: v.state || (ok ? "connected" : "offline"), ok: ok };
   });
-  const mcp = (cfg.data && cfg.data.mcp_servers) || {};
-  const mcpRows = Object.keys(mcp).map(function (k) { return { name: k, enabled: (mcp[k] || {}).enabled !== false }; });
   const pts = (cfg.data && cfg.data.platforms) || {};
   const ptRows = Object.keys(pts).map(function (k) { return { name: k, enabled: (pts[k] || {}).enabled !== false }; });
   return h("div", null,
@@ -815,19 +847,13 @@ function ConnectionsView(p) {
       ptRows.length ? h("div", { className: "mc-stats" }, ptRows.map(function (r) {
         return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 14 } }, r.name),
           h("div", { className: "k" }, Pill({ kind: r.enabled ? "good" : "muted", children: r.enabled ? "enabled" : "disabled" })));
-      })) : Empty()),
-    Section({ title: "MCP servers (" + mcpRows.length + ")" },
-      mcpRows.length ? h("table", { className: "mc-table" },
-        h("thead", null, h("tr", null, h("th", null, "Server"), h("th", null, "Status"))),
-        h("tbody", null, mcpRows.map(function (r) {
-          return h("tr", { key: r.name }, h("td", { className: "mono" }, r.name),
-            h("td", null, Pill({ kind: r.enabled ? "good" : "muted", children: r.enabled ? "enabled" : "disabled" })));
-        }))) : Empty()));
+      })) : Empty()));
 }
 
 // ---- Scheduling & Cron ----
 function CronView(p) {
-  const jobs = useAsync(function () { return fetchJSON("/api/cron/jobs"); }, [p.refreshTick]);
+  const prof = p.profile || "default";
+  const jobs = useAsync(function () { return fetchJSON(profURL("/api/cron/jobs", prof)); }, [p.refreshTick]);
   const [sel, setSel] = useS(null);
   if (jobs.loading) return h("div", { className: "mc-center" }, Spinner());
   if (jobs.error) return ErrBox({ error: jobs.error });
@@ -903,14 +929,15 @@ function SecurityView(p) {
 
 // ---- Memory & Context ----
 function MemoryView(p) {
-  const cfg = useAsync(function () { return fetchJSON("/api/config"); }, [p.refreshTick]);
+  const prof = p.profile || "default";
+  const cfg = useAsync(function () { return fetchJSON(profURL("/api/config", prof)); }, [p.refreshTick]);
   const files = useAsync(function () {
     return Promise.all([
-      fetchJSON("/mc-files?key=soul").catch(function () { return { key: "soul", content: "" }; }),
-      fetchJSON("/mc-files?key=memory").catch(function () { return { key: "memory", content: "" }; }),
-      fetchJSON("/mc-files?key=user").catch(function () { return { key: "user", content: "" }; }),
+      fetchJSON("/mc-files?key=soul&profile=" + encodeURIComponent(prof)).catch(function () { return { key: "soul", content: "" }; }),
+      fetchJSON("/mc-files?key=memory&profile=" + encodeURIComponent(prof)).catch(function () { return { key: "memory", content: "" }; }),
+      fetchJSON("/mc-files?key=user&profile=" + encodeURIComponent(prof)).catch(function () { return { key: "user", content: "" }; }),
     ]);
-  }, [p.refreshTick]);
+  }, [p.refreshTick, prof]);
   if (cfg.loading || files.loading) return h("div", { className: "mc-center" }, Spinner());
   if (cfg.error) return ErrBox({ error: cfg.error });
   const c = cfg.data || {};
@@ -939,13 +966,13 @@ function MemoryView(p) {
       h("dt", null, "Enabled"), h("dd", null, Pill({ kind: pillKind(chk.enabled), children: str(chk.enabled) })),
       h("dt", null, "Max snapshots"), h("dd", null, str(chk.max_snapshots)),
       h("dt", null, "Retention (days)"), h("dd", null, str(chk.retention_days)))),
-    h(MemoryEditableSlot, { files: files.data || [] }));
+    h(MemoryEditableSlot, { files: files.data || [], profile: prof }));
 }
 
 // Render as a child element (h()) so its hooks are scoped to its own
 // component instance — calling it as a bare function would leak its hooks
 // into MemoryView's render and break the hook-count invariant on reload.
-function MemoryEditableSlot(p) { return h(EditableMemory, { files: p.files }); }
+function MemoryEditableSlot(p) { return h(EditableMemory, { files: p.files, profile: p.profile }); }
 
 const MEM_FILE_META = [
   { key: "soul", label: "SOUL.md", desc: "System / persona prompt file" },
@@ -965,10 +992,11 @@ function EditableMemory(p) {
   const onEdit = useC(function (v) { setDrafts(function (d) { const n = Object.assign({}, d); n[tab] = v; return n; }); setStatus(null); }, [tab]);
   const onSave = useC(function () {
     setStatus({ kind: "saving", msg: "saving…" });
-    fetchJSON("/mc-files?key=" + tab, { method: "PUT", body: JSON.stringify({ content: drafts[tab] || "" }) })
+    const q = "?key=" + tab + (p.profile && p.profile !== "default" ? "&profile=" + encodeURIComponent(p.profile) : "");
+    fetchJSON("/mc-files" + q, { method: "PUT", body: JSON.stringify({ content: drafts[tab] || "" }) })
       .then(function () { setStatus({ kind: "ok", msg: "saved ✓" }); })
       .catch(function (e) { setStatus({ kind: "err", msg: "save failed: " + (e && e.message ? e.message : e) }); });
-  }, [tab, drafts]);
+  }, [tab, drafts, p.profile]);
   const dirty = (drafts[tab] || "") !== (initial[tab] || "");
   return h("div", { className: "mc-card", style: { marginTop: 10 } },
     h("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
@@ -1107,8 +1135,9 @@ function SkillsView(p) {
 
 // ---- Sessions ----
 function SessionsView(p) {
-  const stats = useAsync(function () { return fetchJSON("/api/sessions/stats"); }, [p.refreshTick]);
-  const list = useAsync(function () { return fetchJSON("/api/sessions?limit=60&order=recent&exclude_sources=cron"); }, [p.refreshTick]);
+  const prof = p.profile || "default";
+  const stats = useAsync(function () { return fetchJSON(profURL("/api/sessions/stats", prof)); }, [p.refreshTick]);
+  const list = useAsync(function () { return fetchJSON(profURL("/api/sessions?limit=60&order=recent&exclude_sources=cron", prof)); }, [p.refreshTick]);
   const [q, setQ] = useS("");
   const [delId, setDelId] = useS(null);
   const [delErr, setDelErr] = useS(null);
@@ -1337,23 +1366,21 @@ function ConfigView(p) {
       return h(TreeNode, { key: k, k: k, v: data[k], depth: 0, filter: q.trim().toLowerCase() });
     })));
 }
+const VIEWS = { workspace: WorkspaceView, sessions: SessionsView, cron: CronView, models: ModelsView, connections: ConnectionsView, security: SecurityView, memory: MemoryView, tools: ToolsView, skills: SkillsView, logs: LogsView, config: ConfigView };
 
-// =================== APP SHELL ===================
 const NAV = [
-  { id: "overview", label: "Overview", icon: "grid" },
+  { id: "workspace", label: "Workspace", icon: "grid" },
+  { id: "sessions", label: "Chats & Sessions", icon: "chat" },
+  { id: "cron", label: "Cron Jobs", icon: "clock" },
   { id: "models", label: "Models & Providers", icon: "chip" },
   { id: "connections", label: "Connections", icon: "plug" },
-  { id: "cron", label: "Scheduling & Cron", icon: "clock" },
-  { id: "security", label: "Security & Privacy", icon: "shield" },
   { id: "memory", label: "Memory & Context", icon: "brain" },
   { id: "tools", label: "Tools & MCP", icon: "tools" },
   { id: "skills", label: "Skills", icon: "spark" },
-  { id: "sessions", label: "Sessions", icon: "chat" },
   { id: "logs", label: "Logs", icon: "file" },
   { id: "config", label: "Config (tree)", icon: "sliders" },
 ];
-const TITLES = { overview: "Overview", models: "Models & Providers", connections: "Connections / Platforms", cron: "Scheduling & Cron", security: "Security & Privacy", memory: "Memory & Context", tools: "Tools & MCP", skills: "Skills", sessions: "Sessions", logs: "Logs", config: "Configuration" };
-const VIEWS = { overview: OverviewView, models: ModelsView, connections: ConnectionsView, cron: CronView, security: SecurityView, memory: MemoryView, tools: ToolsView, skills: SkillsView, sessions: SessionsView, logs: LogsView, config: ConfigView };
+const TITLES = { workspace: "Workspace", sessions: "Chats & Sessions", cron: "Cron Jobs", models: "Models & Providers", connections: "Connections", security: "Security & Privacy", memory: "Memory & Context", tools: "Tools & MCP", skills: "Skills", logs: "Logs", config: "Configuration" };
 
 function Header(p) {
   const s = useAsync(function () { return fetchJSON("/api/status"); }, [p.refreshTick]);
@@ -1362,6 +1389,7 @@ function Header(p) {
     h("div", null, h("h2", null, TITLES[p.view] || "Mission Control"),
       h("div", { className: "crumb" }, "Hermes Mission Control")),
     h("div", { className: "spacer" }),
+    h(ProfileSwitcher, { profile: p.profile, onProfile: p.onProfile }),
     s.data ? h("span", { className: "pill " + gk.kind }, h("span", { className: "d" }), "gateway: " + gk.label) : null,
     s.data ? h("span", { className: "pill muted" }, "v" + str(s.data.version)) : null,
     h("button", { className: "mc-btn icon", title: "Toggle theme", onClick: p.onToggleTheme }, h(Icon, { name: p.theme === "dark" ? "sun" : "moon", size: 18 })),
@@ -1369,36 +1397,42 @@ function Header(p) {
 }
 
 function App() {
-  // ---- hash router: keep view state in location.hash so refresh + back/forward work ----
-  function viewToHash(v) {
-    if (!v || !v.name) return "#/overview";
-    if (v.name === "session" || v.name === "sessionchat") return "#/" + v.name + "/" + encodeURIComponent(v.id || "");
-    return "#/" + v.name;
+  // ---- hash router: keep view + profile state in location.hash ----
+  function viewToHash(v, prof) {
+    const p = prof && prof !== "default" ? "p/" + prof + "/" : "";
+    if (!v || !v.name) return "#/" + p + "overview";
+    if (v.name === "session" || v.name === "sessionchat") return "#/" + p + v.name + "/" + encodeURIComponent(v.id || "");
+    return "#/" + p + v.name;
   }
   function hashToView() {
-    const h = (location.hash || "").replace(/^#\/?/, "");
-    if (!h) return { name: "overview" };
-    const parts = h.split("/");
-    const name = parts[0];
-    if ((name === "session" || name === "sessionchat") && parts[1]) {
-      return { name: name, id: decodeURIComponent(parts[1]) };
+    const raw = (location.hash || "").replace(/^#\/?/, "");
+    const parts = raw.split("/");
+    let prof = "default";
+    let idx = 0;
+    if (parts[0] === "p" && parts[1]) { prof = parts[1]; idx = 2; }
+    const name = parts[idx] || "overview";
+    if ((name === "session" || name === "sessionchat") && parts[idx + 1]) {
+      return { name: name, id: decodeURIComponent(parts[idx + 1]), profile: prof };
     }
-    return { name: name };
+    return { name: name, profile: prof };
   }
-  const [view, setView] = useS(hashToView());
+  const init = hashToView();
+  const [view, setView] = useS(init);
+  const [profile, setProfile] = useS(function () {
+    const saved = (typeof localStorage !== "undefined" && localStorage.getItem("mc-profile")) || "default";
+    return init.profile || saved || "default";
+  });
   const [refreshTick, setRefreshTick] = useS(0);
   const [theme, setTheme] = useS((typeof localStorage !== "undefined" && localStorage.getItem("mc-theme")) || "dark");
-  // Apply the theme to <html> (documentElement) so the :root/body layer
-  // inherits it — setting it only on a child div can't reach body's var() reads.
   try { document.documentElement.setAttribute("data-theme", theme); } catch (e) {}
   const nav = useC(function (v) {
     setView(v);
-    try { history.pushState(null, "", viewToHash(v)); } catch (e) {}
+    try { history.pushState(null, "", viewToHash(v, profile)); } catch (e) {}
     window.scrollTo(0, 0);
-  }, []);
+  }, [profile]);
   // Sync browser back/forward into React view state.
   React.useEffect(function () {
-    function onPop() { setView(hashToView()); }
+    function onPop() { const nv = hashToView(); setView(nv); if (nv.profile) setProfile(nv.profile); }
     window.addEventListener("popstate", onPop);
     return function () { window.removeEventListener("popstate", onPop); };
   }, []);
@@ -1415,9 +1449,15 @@ function App() {
       return nt;
     });
   }, []);
-  const rp = { refreshTick: refreshTick, onRefresh: onRefresh };
+  const onProfile = useC(function (np) {
+    setProfile(np);
+    try { localStorage.setItem("mc-profile", np); } catch (e) {}
+    try { history.replaceState(null, "", viewToHash(view, np)); } catch (e) {}
+    onRefresh();
+  }, [view]);
+  const rp = { refreshTick: refreshTick, onRefresh: onRefresh, profile: profile, onProfile: onProfile };
   const active = view.name === "session" ? "sessions" : view.name;
-  const Body = VIEWS[active] || OverviewView;
+  const Body = VIEWS[active] || WorkspaceView;
   return h("div", { className: "mc-shell", "data-theme": theme },
     h("div", { className: "mc-rail" },
       h("div", { className: "mc-brand" }, h("div", { className: "mc-logo" }, "H"),
@@ -1429,12 +1469,169 @@ function App() {
       h("div", { className: "mc-rail-foot" }, h("div", null, h("span", { className: "dot" }), "9120 · proxy to 9119"),
         h("div", { style: { marginTop: 4 } }, "read-only · Stage 1"))),
     h("div", { className: "mc-main" },
-      h(Header, { view: active, onRefresh: onRefresh, onToggleTheme: onToggleTheme, theme: theme }),
+      h(Header, { view: active, profile: profile, onProfile: onProfile, onRefresh: onRefresh, onToggleTheme: onToggleTheme, theme: theme }),
       h("div", { className: "mc-body" }, (view.name === "session" || view.name === "sessionchat")
-        ? h(ChatPanel, Object.assign({ onBack: onBack, sessionId: view.id }, rp))
+        ? h(ChatPanel, Object.assign({ onBack: onBack, sessionId: view.id, profile: profile }, rp))
         : view.name === "chat"
-        ? h(ChatPanel, Object.assign({ onBack: onBack }, rp))
+        ? h(ChatPanel, Object.assign({ onBack: onBack, profile: profile }, rp))
         : h(Body, Object.assign({ nav: nav, onBack: onBack }, rp)))));
+}
+
+// Build a fetch URL with the active profile appended (Hermes scopes most
+// data by profile via the ?profile= query param).
+function profURL(path, profile) {
+  if (!profile || profile === "default") return path;
+  const sep = path.indexOf("?") >= 0 ? "&" : "?";
+  return path + sep + "profile=" + encodeURIComponent(profile);
+}
+
+// ---- Profile switcher (top bar) ----
+// Replicates Hermes profiles: each is an isolated instance under
+// ~/.hermes/profiles/<name>/. Lists via /api/profiles; create/delete go
+// through the proxy (mc_srv.py) which shells out to `hermes profile ...`.
+function ProfileSwitcher(p) {
+  const profiles = useAsync(function () { return fetchJSON("/api/profiles"); }, [p.refreshTick]);
+  const [open, setOpen] = useS(false);
+  const [creating, setCreating] = useS(false);
+  const list = (profiles.data && profiles.data.profiles) || [];
+  const cur = list.filter(function (x) { return x.name === p.profile; })[0] || list[0] || { name: p.profile };
+  const menu = open ? h("div", { className: "mc-dropdown", onClick: function (e) { e.stopPropagation(); } },
+    h("div", { className: "mc-dropdown-head" }, "Profiles"),
+    list.map(function (x) {
+      return h("button", {
+        key: x.name, className: "mc-dropdown-item" + (x.name === p.profile ? " active" : ""),
+        onClick: function () { setOpen(false); if (x.name !== p.profile) p.onProfile(x.name); }
+      },
+        h("span", { className: "mc-dot " + (x.gateway_running ? "on" : "off") }),
+        h("span", { className: "mc-di-name" }, x.name),
+        x.is_default ? h("span", { className: "mc-di-tag" }, "default") : null,
+        h("span", { className: "mc-di-sub" }, (x.model || "") + " · " + (x.skill_count || 0) + " skills"));
+    }),
+    h("button", { className: "mc-dropdown-item create", onClick: function () { setOpen(false); setCreating(true); } },
+      h(Icon, { name: "plus", size: 14 }), " New profile…")
+  ) : null;
+  return h("div", { className: "mc-profile-sw", onClick: function () { setOpen(function (o) { return !o; }); } },
+    h("button", { className: "mc-btn", title: "Switch profile" },
+      h("span", { className: "mc-dot " + (cur.gateway_running ? "on" : "off") }),
+      h("span", { className: "mc-pname" }, cur.name),
+      h(Icon, { name: "chevron-down", size: 14 })),
+    menu,
+    creating ? h(ProfileCreateModal, { onClose: function () { setCreating(false); }, onDone: function () { setCreating(false); p.onProfile(p.profile); } }) : null);
+}
+
+function ProfileCreateModal(p) {
+  const [name, setName] = useS("");
+  const [desc, setDesc] = useS("");
+  const [clone, setClone] = useS(true);
+  const [cloneAll, setCloneAll] = useS(false);
+  const [busy, setBusy] = useS(false);
+  const [err, setErr] = useS(null);
+  const [ok, setOk] = useS(false);
+  const valid = /^[a-z0-9][a-z0-9_-]*$/.test(name);
+  const onSubmit = function () {
+    if (!valid || busy) return;
+    setBusy(true); setErr(null); setOk(false);
+    const body = { name: name, clone: clone, clone_all: cloneAll, description: desc };
+    fetchJSON("/mc-profile", { method: "POST", body: JSON.stringify(body) })
+      .then(function () { setBusy(false); setOk(true); setTimeout(function () { p.onDone && p.onDone(); }, 600); })
+      .catch(function (e) { setBusy(false); setErr("create failed: " + (e && (e.message || JSON.stringify(e)))); });
+  };
+  return h("div", { className: "mc-modal-backdrop", onClick: function () { p.onClose && p.onClose(); } },
+    h("div", { className: "mc-modal", onClick: function (e) { e.stopPropagation(); } },
+      h("h3", { className: "mc-h" }, "New profile"),
+      h("p", { className: "mc-sub" }, "Creates an isolated Hermes instance at ~/.hermes/profiles/<name> — its own config, skills, memory and cron. Mirrors `hermes profile create`."),
+      h("label", { className: "mc-field" }, h("span", null, "Name"), h("input", { className: "mc-input", placeholder: "e.g. coder", value: name, onChange: function (e) { setName(e.target.value); } })),
+      !valid && name ? h("div", { className: "mc-err" }, "Use lowercase letters, numbers, - and _.") : null,
+      h("label", { className: "mc-field" }, h("span", null, "Description"), h("input", { className: "mc-input", placeholder: "optional", value: desc, onChange: function (e) { setDesc(e.target.value); } })),
+      h("label", { className: "mc-check" }, h("input", { type: "checkbox", checked: clone, onChange: function (e) { setClone(e.target.checked); } }), " Clone config/skills from active profile"),
+      h("label", { className: "mc-check" }, h("input", { type: "checkbox", checked: cloneAll, onChange: function (e) { setCloneAll(e.target.checked); } }), " Full clone (all state, excluding history)"),
+      err ? h("div", { className: "mc-err", style: { marginBottom: 8 } }, String(err.message || err)) : null,
+      ok ? h("div", { className: "mc-ok", style: { marginBottom: 8 } }, "Profile created ✓") : null,
+      h("div", { className: "mc-modal-actions" },
+        h("button", { className: "mc-btn", onClick: function () { p.onClose && p.onClose(); } }, "Cancel"),
+        h("button", { className: "mc-btn primary", disabled: !valid || busy, onClick: onSubmit }, busy ? "Creating…" : "Create profile"))));
+}
+
+// ---- Workspace (hero): profiles + recent chats + cron + stats ----
+function WorkspaceView(p) {
+  const prof = p.profile || "default";
+  const profiles = useAsync(function () { return fetchJSON("/api/profiles"); }, [p.refreshTick]);
+  const status = useAsync(function () { return fetchJSON(profURL("/api/status", prof)); }, [p.refreshTick]);
+  const cfg = useAsync(function () { return fetchJSON(profURL("/api/config", prof)); }, [p.refreshTick]);
+  const stats = useAsync(function () { return fetchJSON(profURL("/api/sessions/stats", prof)); }, [p.refreshTick]);
+  const sessions = useAsync(function () { return fetchJSON(profURL("/api/sessions?limit=12&order=recent&exclude_sources=cron", prof)); }, [p.refreshTick]);
+  const jobs = useAsync(function () { return fetchJSON(profURL("/api/cron/jobs", prof)); }, [p.refreshTick]);
+  if (profiles.loading || status.loading || cfg.loading || stats.loading || sessions.loading || jobs.loading) return h("div", { className: "mc-center" }, Spinner());
+  if (profiles.error) return ErrBox({ error: profiles.error });
+  const plist = (profiles.data && profiles.data.profiles) || [];
+  const d = status.data || {};
+  const gk = gatewayKind(d);
+  const platforms = d.gateway_platforms || {};
+  const platList = Object.keys(platforms).map(function (k) {
+    const v = platforms[k] || {};
+    const ok = v.connected !== false && v.state !== "disconnected";
+    return { k: k, ok: ok, state: v.state || (ok ? "connected" : "offline") };
+  });
+  const c = cfg.data || {};
+  const st = stats.data || {};
+  const rows = sessions.data ? (sessions.data.sessions || sessions.data) : [];
+  const jlist = jobs.data || [];
+  const activeJobs = jlist.filter(function (j) { return j.enabled && !j.paused_at; });
+  return h("div", null,
+    Section({ title: "Profiles" }, h("div", { className: "mc-profile-strip" },
+      plist.map(function (x) {
+        return h("div", { key: x.name, className: cn("mc-pcard", x.name === prof && "active") },
+          h("div", { className: "mc-pcard-top" },
+            h("span", { className: "mc-dot " + (x.gateway_running ? "on" : "off") }),
+            h("span", { className: "mc-pcard-name" }, x.name),
+            x.is_default ? h("span", { className: "mc-di-tag" }, "default") : null),
+          h("div", { className: "mc-pcard-meta" }, (x.model || "-") + " · " + (x.provider || "-")),
+          h("div", { className: "mc-pcard-sub" }, (x.skill_count || 0) + " skills"),
+          h("button", { className: "mc-btn sm" + (x.name === prof ? " primary" : ""), disabled: x.name === prof,
+            onClick: function () { p.onProfile && p.onProfile(x.name); } }, x.name === prof ? "Active" : "Use"));
+      }))),
+    h("div", { className: "mc-grid-3" },
+      Section({ title: "Runtime" }, h("div", { className: "mc-stats" },
+        Stat({ k: "Hermes", v: d.version }),
+        Stat({ k: "Gateway", v: gk.label, vclass: gk.kind }),
+        Stat({ k: "Active agents", v: fmt(d.active_agents) }),
+        Stat({ k: "Active sessions", v: fmt(d.active_sessions) }),
+        Stat({ k: "Gateway busy", v: d.gateway_busy ? "yes" : "no", vclass: d.gateway_busy ? "warn" : "good" }))),
+      Section({ title: "Update" }, h("div", { className: "mc-stats" },
+        Stat({ k: "Latest version", v: d.latest_config_version || "-" }),
+        Stat({ k: "Can update", v: d.can_update_hermes ? "yes" : "no", vclass: d.can_update_hermes ? "warn" : "good" }))),
+      Section({ title: "Workspace stats" }, h("div", { className: "mc-stats" },
+        Stat({ k: "Total sessions", v: fmt(st.total) }),
+        Stat({ k: "Messages", v: fmt(st.messages) }),
+        Stat({ k: "Cron jobs", v: jlist.length, vclass: activeJobs.length ? "good" : "muted" }),
+        Stat({ k: "Default model", v: str(c.model), vclass: "mono" }))),
+    ),
+    Section({ title: "Connected platforms (" + platList.length + ")" },
+      platList.length ? h("div", { className: "mc-stats" }, platList.map(function (pl) {
+        return h("div", { className: "mc-stat" }, h("div", { className: "v", style: { fontSize: 15 } }, pl.k),
+          h("div", { className: "k" }, Pill({ kind: pillKind(pl.ok), children: pl.state })));
+      })) : Empty({ children: "No platforms connected." })),
+    h("div", { className: "mc-split" },
+      h("div", null,
+        Section({ title: "Recent chats (" + rows.length + ")" },
+          rows.length ? h("div", { className: "mc-list" }, rows.map(function (s) {
+            const nm = s.title || s.display_name || "(untitled)";
+            return h("div", { key: s.id, className: "mc-list-row", onClick: function () { p.nav({ name: "sessionchat", id: s.id }); }, style: { cursor: "pointer" } },
+              h("div", { className: "mc-lr-main" }, h("strong", null, nm), h("div", { className: "mc-lr-sub" }, str(s.source) + " · " + timeAgo((s.started_at || 0) * 1000))),
+              h("div", { className: "mc-lr-side" }, String(s.message_count != null ? s.message_count : "-") + " msgs"));
+          })) : Empty({ children: "No sessions yet." }),
+          h("div", { style: { marginTop: 8 } }, h("button", { className: "mc-btn", onClick: function () { p.nav({ name: "sessions" }); } }, "All sessions →")))
+      ),
+      h("div", null,
+        Section({ title: "Cron jobs (" + jlist.length + ")" },
+          jlist.length ? h("div", { className: "mc-list" }, jlist.slice(0, 8).map(function (j) {
+            const on = j.enabled && !j.paused_at;
+            return h("div", { key: j.id, className: "mc-list-row", onClick: function () { p.nav({ name: "cron" }); }, style: { cursor: "pointer" } },
+              h("div", { className: "mc-lr-main" }, h("strong", null, j.name), h("div", { className: "mc-lr-sub" }, (j.schedule_display || j.schedule || "-"))),
+              h("div", { className: "mc-lr-side" }, Pill({ kind: on ? "good" : "warn", children: j.paused_at ? "paused" : (on ? "on" : "off") })));
+          })) : Empty({ children: "No cron jobs." }),
+          h("div", { style: { marginTop: 8 } }, h("button", { className: "mc-btn", onClick: function () { p.nav({ name: "cron" }); } }, "All cron jobs →")))
+      )));
 }
 
 // ---- Chat over /api/ws (JSON-RPC sidecar) ----

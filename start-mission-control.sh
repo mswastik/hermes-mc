@@ -86,7 +86,11 @@ done
 sleep 0.5
 
 log "Starting standalone server on http://127.0.0.1:$PORT/mission-control …"
-MC_PORT="$PORT" nohup python3 "$SERVER_PY" >"$LOG_FILE" 2>&1 &
+# Use the Hermes agent venv python so PyYAML (and the rest of the Hermes
+# environment) is available regardless of the caller's PATH.
+VENV_PY="${HERMES_HOME:-$HOME/.hermes}/hermes-agent/venv/bin/python3"
+[ -x "$VENV_PY" ] || VENV_PY="$(command -v python3)"
+MC_PORT="$PORT" nohup "$VENV_PY" "$SERVER_PY" >"$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
 
 # wait for readiness
