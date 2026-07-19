@@ -17,11 +17,11 @@
     --mc-rail:#0d1119;
   }
   [data-theme="light"]{
-    --mc-bg:#f4f6fa; --mc-panel:#ffffff; --mc-panel-2:#eef1f6; --mc-border:#d6dce5;
+    --mc-bg:#fefefe; --mc-panel:#ffffff; --mc-panel-2:#fbfbfb; --mc-border:#d6dce5;
     --mc-fg:#1a2230; --mc-muted:#64748b; --mc-faint:#94a3b8;
     --mc-accent:#0d9488; --mc-accent-2:#0284c7;
     --mc-good:#059669; --mc-warn:#d97706; --mc-bad:#dc2626; --mc-info:#2563eb;
-    --mc-rail:#e9edf3;
+    --mc-rail:#fefefe;
   }
   [data-theme="dark"]{
     --mc-fg:#f4f6fa;
@@ -58,7 +58,7 @@
   [data-theme="light"] .mc-logs{background:#0b0e14;color:#d4dae4}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  body{background:var(--mc-bg);color:var(--mc-fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  body{background:var(--mc-bg);color:var(--mc-fg);font:18px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased}
   a{color:var(--mc-accent-2);text-decoration:none}
   button{font:inherit;color:inherit;cursor:pointer}
@@ -189,7 +189,7 @@
   .mc-chat{max-height:780px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
   .mc-msg{border-radius:10px;padding:10px 12px;font-size:13px;max-width:88%}
   .mc-msg.user{background:#16263a;align-self:flex-end;color:#f8f8f8}
-  .mc-msg.assistant{background:var(--mc-panel-2);align-self:flex-start;border:1px solid var(--mc-border)}
+  .mc-msg.assistant{background:var(--mc-panel-2);align-self:flex-start;border:1px solid var(--mc-border); margin: 20px 0;}
   .mc-msg .role{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--mc-faint);margin-bottom:4px}
   .mc-logs{background:#0a0d13;border:1px solid var(--mc-border);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;max-height:810px;overflow-y:auto;line-height:1.6}
   .ln.err{color:var(--mc-bad)} .ln.warn{color:var(--mc-warn)} .ln.info{color:var(--mc-info)}
@@ -216,7 +216,10 @@
   .mc-toolcall-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
   .mc-toolcall-nargs{font-size:10px;color:var(--mc-muted);background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:5px;padding:0 5px;white-space:nowrap}
   .mc-toolcall-detail{padding:0 8px 8px 22px}
-  .mc-toolcall-detail .mc-pre{margin:0;background:var(--mc-panel);border-radius:5px;font-size:11px;max-height:260px;overflow:auto}
+  .mc-toolcall-wrap{display:flex;flex-direction:column;gap:2px}
+  .mc-toolresult{margin:2px 0 2px 22px;border-left:2px solid var(--mc-accent-2);padding:2px 0 2px 8px;background:var(--mc-panel);border-radius:5px}
+  .mc-toolresult-label{font-size:10px;color:var(--mc-accent-2);margin-bottom:2px;font-family:ui-monospace,Menlo,monospace}
+  .mc-toolresult .mc-pre{margin:0;background:var(--mc-panel-2);border-radius:5px;font-size:11px;max-height:260px;overflow:auto}
   .mc-toolcall-path{font-size:10.5px;color:var(--mc-accent-2);padding:3px 0 4px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mc-toolcall-detail .mc-diff{margin:2px 0 0;max-height:340px}
   .mc-diff{margin:2px 0 0;padding:4px 0;background:var(--mc-panel);border:1px solid var(--mc-border);border-radius:6px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.5;overflow:auto;max-height:380px}
@@ -306,6 +309,10 @@
   .md-table th,.md-table td{border:1px solid var(--mc-border);padding:4px 8px;text-align:left;vertical-align:top}
   .md-table th{background:var(--mc-panel-2);font-weight:600;color:var(--mc-fg)}
   .md-table tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+  .md-ul,.md-ol{margin:4px 0 8px;padding-left:20px}
+  .md-ul li,.md-ol li{margin:2px 0;line-height:1.5}
+  .md-ul{list-style:disc}
+  .md-ol{list-style:decimal}
   /* ---- [tag] pills ---- */
   .mc-tag{display:inline-block;background:rgba(45,212,191,.12);border:1px solid var(--mc-accent-2);color:var(--mc-accent-2);border-radius:6px;padding:0 6px;margin:0 2px;font-size:11px;font-family:ui-monospace,Menlo,monospace;line-height:1.5}
 
@@ -452,15 +459,31 @@ function mdToHtml(src) {
     html += "</tbody></table>";
     return "\n" + html;
   });
+  // unordered + ordered lists (line-based, before inline transforms)
+  s = s.replace(/(?:^|\n)((?:[*\-]\s+.*(?:\n|$))+)/g, function (_, block) {
+    const items = block.trim().split("\n").map(function (l) { return l.replace(/^[*\-]\s+/, ""); });
+    return "\n<ul class='md-ul'>" + items.map(function (it) { return "<li>" + it + "</li>"; }).join("") + "</ul>";
+  });
+  s = s.replace(/(?:^|\n)((?:^\d+\.\s+.*(?:\n|$))+)/gm, function (_, block) {
+    const items = block.trim().split("\n").map(function (l) { return l.replace(/^\d+\.\s+/, ""); });
+    return "\n<ol class='md-ol'>" + items.map(function (it) { return "<li>" + it + "</li>"; }).join("") + "</ol>";
+  });
   // headings
   s = s.replace(/^####\s+(.*)$/gm, "<h4>$1</h4>")
        .replace(/^###\s+(.*)$/gm, "<h3>$1</h3>")
        .replace(/^##\s+(.*)$/gm, "<h2>$1</h2>")
        .replace(/^#\s+(.*)$/gm, "<h1>$1</h1>");
-  // bold / italic / inline code
-  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-       .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+  // bold / italic / inline code — non-greedy so bold can contain inner '*' (e.g. **a *b* c**)
+  s = s.replace(/\*\*([\s\S]+?)\*\*/g, "<strong>$1</strong>")
+       .replace(/\*([\s\S]+?)\*/g, "<em>$1</em>")
        .replace(/`([^`]+)`/g, "<code class='md-code'>$1</code>");
+  // line breaks for plain paragraphs (protect content already inside pre/code/details/table/ul/ol/li/h1-4)
+  s = s.replace(/\n/g, "<br>");
+  s = s.replace(/(<pre[^>]*>[\s\S]*?<\/pre>)/g, function (_, blk) { return blk.replace(/<br>/g, "\n"); })
+       .replace(/(<code[^>]*>[\s\S]*?<\/code>)/g, function (_, blk) { return blk.replace(/<br>/g, "\n"); })
+       .replace(/(<details[^>]*>[\s\S]*?<\/details>)/g, function (_, blk) { return blk.replace(/<br>/g, "\n"); })
+       .replace(/(<table[^>]*>[\s\S]*?<\/table>)/g, function (_, blk) { return blk.replace(/<br>/g, "\n"); })
+       .replace(/(<(ul|ol|li|h[1-4])[^>]*>[\s\S]*?<\/\2>)/g, function (_, blk) { return blk.replace(/<br>/g, "\n"); });
   // [tag] tokens -> pills (standalone bracketed words; allow cased alnum + _ - .)
   s = s.replace(/(^|[\s(\[])(\[[A-Za-z0-9_.\-]{1,48}\])(?=[\s).,;:!?]|$)/g, function (_, pre, tag) {
     return pre + "<span class='mc-tag'>" + tag + "</span>";
@@ -483,20 +506,42 @@ function fmt(n) { if (n == null) return "-"; if (typeof n === "number" && n >= 1
 // Hermes stores an assistant turn (with tool_calls) and the tool's result
 // as TWO separate messages. Combine them so the dashboard shows ONE block:
 // call metadata on top, result(s) rendered beneath it.
+// Results are matched to calls by tool_call_id; orphan results (no matching
+// call in this session) are kept as standalone role:"tool" messages so they
+// still render with proper formatting instead of being dropped.
 function mergeToolResults(messages) {
   const out = [];
-  let pending = null; // assistant msg currently collecting results
-  (messages || []).forEach(function (m) {
-    const isResult = (m.role === "tool" || (m.role || "").toLowerCase() === "tool") && m.tool_name;
-    if (isResult && pending) {
-      pending._results = pending._results || [];
-      pending._results.push(m);
+  const pending = []; // assistant msgs currently collecting results
+  // Clone each message so we never mutate the source `msgs` array (which
+  // persists across React re-renders — mutating it would accumulate _results
+  // and duplicate tool outputs on every re-render).
+  (messages || []).forEach(function (src) {
+    const m = Object.assign({}, src, { _results: [], _orphan: false });
+    if (m.role === "tool" || (m.role || "").toLowerCase() === "tool") {
+      const rid = m.tool_call_id || m.tool_call;
+      if (rid && pending.length) {
+        // attach to the most recent pending assistant that has this call
+        let attached = false;
+        for (let k = pending.length - 1; k >= 0; k--) {
+          const calls = pending[k].tool_calls || [];
+          if (calls.some(function (c) { return (c.id || c.tool_call_id) === rid; })) {
+            pending[k]._results.push(m);
+            attached = true;
+            break;
+          }
+        }
+        if (!attached) { m._orphan = true; out.push(m); }
+        return;
+      }
+      // no id or no pending — keep as orphan, rendered with formatted style
+      m._orphan = true;
+      out.push(m);
       return;
     }
-    if ((m.tool_calls && m.tool_calls.length) && !pending) {
-      pending = m; out.push(pending); return;
+    if ((m.tool_calls && m.tool_calls.length)) {
+      pending.push(m); out.push(m); return;
     }
-    pending = null;
+    pending.length = 0;
     out.push(m);
   });
   return out;
@@ -568,9 +613,39 @@ function formatArgs(v, depth) {
   }
   return String(v);
 }
+function normalizeToolContent(content) {
+  // Hermes tool results arrive as a JSON STRING (e.g. '{"total_count":100,...}')
+  // or occasionally as a double-escaped string with literal \n. Turn either
+  // into readable text with REAL newlines so <pre> renders line breaks.
+  if (content == null) return "";
+  if (typeof content !== "string") return JSON.stringify(content, null, 2);
+  let s = content.trim();
+  if (s[0] === "{" || s[0] === "[") {
+    try {
+      const p = JSON.parse(s);
+      if (typeof p === "string") return p;            // unescaped real text w/ newlines
+      return JSON.stringify(p, null, 2);             // object/array -> pretty JSON
+    } catch (e) { /* fall through */ }
+  }
+  // Not JSON: undo common double-encoding so \n / \t / \" become real chars.
+  return s.replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+}
+function renderToolResultBlock(name, content) {
+  // Formatted tool-output block (unified style for every tool).
+  const text = normalizeToolContent(content);
+  const long = text.length > 600;
+  const body = (text.indexOf("\n-") >= 0 || text.indexOf("\n+") >= 0)
+    ? renderDiff(text) // already diff-shaped output (e.g. patch result)
+    : h("pre", { className: "mc-pre" }, text.length ? text : "(no output)");
+  return h("div", { className: "mc-toolresult" },
+    h("div", { className: "mc-toolresult-label" }, "↳ result" + (name ? " · " + name : "")),
+    long ? h("details", null, h("summary", { className: "mc-toolcall-sum" }, "show output (" + text.length + " chars)"), body)
+         : body);
+}
 function renderToolCalls(msg) {
   const calls = (msg.tool_calls || []).map(parseToolCall).filter(Boolean);
   if (!calls.length) return null;
+  const results = msg._results || [];
   const items = calls.map(function (c, i) {
     const isObj = c.args && typeof c.args === "object";
     const argCount = isObj ? Object.keys(c.args).length : 0;
@@ -604,12 +679,22 @@ function renderToolCalls(msg) {
       detailBody = h("div", { className: "mc-toolcall-detail" },
         h("pre", { className: "mc-pre" }, formatArgs(c.args)));
     }
-    // Native <details> keeps its open/closed state across re-renders.
-    return h("details", { key: i, className: "mc-toolcall" },
-      h("summary", { className: "mc-toolcall-sum", title: c.name },
-        h("span", { className: "mc-toolcall-name" }, summary),
-        argCount ? h("span", { className: "mc-toolcall-nargs" }, argCount + " arg" + (argCount > 1 ? "s" : "")) : null),
-      detailBody);
+    // Pair results to this call by tool_call_id (or position if ids missing).
+    const myResults = results.filter(function (r) {
+      return (r.tool_call_id || r.tool_call) === c.id || (!c.id && results.indexOf(r) === i);
+    });
+    const resultNodes = myResults.length
+      ? myResults.map(function (r, ri) {
+          return renderToolResultBlock(r.tool_name || c.name, r.content != null ? r.content : r.text);
+        })
+      : null;
+    return h("div", { key: i, className: "mc-toolcall-wrap" },
+      h("details", { className: "mc-toolcall" },
+        h("summary", { className: "mc-toolcall-sum", title: c.name },
+          h("span", { className: "mc-toolcall-name" }, summary),
+          argCount ? h("span", { className: "mc-toolcall-nargs" }, argCount + " arg" + (argCount > 1 ? "s" : "")) : null),
+        detailBody),
+      resultNodes);
   });
   return h("div", { className: "mc-toolcalls" }, items);
 }
@@ -1735,20 +1820,39 @@ function ChatPanel(p) {
   React.useEffect(function () { reloadModels(); }, []);
   React.useEffect(function () { ensureConn().catch(function () {}); }, []);
   // Load prior message history when resuming an existing session.
-  React.useEffect(function () {
-    if (!p.sessionId) return;
-    fetchJSON("/api/sessions/" + encodeURIComponent(p.sessionId) + "/messages?limit=400")
+  const loadHistory = useC(function () {
+    if (!p.sessionId) return Promise.resolve();
+    return fetchJSON("/api/sessions/" + encodeURIComponent(p.sessionId) + "/messages?limit=400")
       .then(function (j) {
         const arr = (j && (j.messages || j)) || [];
         const conv = arr
           .filter(function (m) { return m && (m.role === "user" || m.role === "assistant" || m.role === "tool"); })
           .map(function (m) {
-            return { role: m.role, text: m.content || m.text || "", think: m.reasoning || m.thinking || m.thought || "", tools: (m.tool_calls || []).map(function (tc) { return (tc.name || tc.tool_name || "tool"); }), tool_name: m.tool_name || null, tool_calls: m.tool_calls || null, _results: [] };
+            return Object.assign({}, m, {
+              role: m.role, text: m.content || m.text || "", think: m.reasoning || m.thinking || m.thought || "",
+              tools: (m.tool_calls || []).map(function (tc) { return (tc.name || tc.tool_name || "tool"); }),
+              tool_name: m.tool_name || null, tool_calls: m.tool_calls || null, _results: [],
+              tool_call_id: m.tool_call_id || m.tool_call || null
+            });
           });
         if (conv.length) setMsgs(conv);
       })
       .catch(function () {});
-  }, []);
+  }, [p.sessionId]);
+  React.useEffect(function () { loadHistory(); }, []);
+  // Auto-refresh the tool-call section when a run finishes. The gateway
+  // persists full tool args/diff a moment after completion, so we debounce
+  // and retry once. This updates only the chat messages, not the whole page.
+  const reloadTimer = React.useRef(null);
+  const scheduleToolReload = useC(function () {
+    if (reloadTimer.current) clearTimeout(reloadTimer.current);
+    reloadTimer.current = setTimeout(function () {
+      loadHistory().then(function () {
+        // One retry ~700ms later in case the completed turn wasn't persisted yet.
+        setTimeout(function () { loadHistory(); }, 700);
+      });
+    }, 350);
+  }, [loadHistory]);
   function setModel(id) {
     const m = (models || []).find(function (x) { return (x.id || x.model) === id; });
     const payload = { scope: "main", model: id, provider: m ? (m.provider || m.prov) : null };
@@ -1810,12 +1914,19 @@ function ChatPanel(p) {
     } else if (t === "message.complete") {
       const cur = msgRef.current; if (cur) { cur.text = pl.text || cur.text; setMsgs(function (a) { return a.slice(); }); }
       msgRef.current = null; setTyping(false); setBusy(false);
+      // The gateway persists the completed turn (full tool args/diff) shortly
+      // after completion. Reload the history so the tool-call section fills in
+      // automatically — no full-page refresh needed. Debounced + retried.
+      scheduleToolReload();
     } else if (t === "tool.call" || t === "tool.start") {
       // Original behaviour: just record the tool name in the chips row.
       // (The gateway's tool.start carries no arguments, so pushing it into
       // tool_calls would render empty stub blocks. Real call args come from
       // history, which renderToolCalls already handles.)
       const cur = msgRef.current; if (cur) { cur.tools = cur.tools.concat([pl.name || "tool"]); setMsgs(function (a) { return a.slice(); }); }
+      scheduleToolReload();
+    } else if (t === "tool.result") {
+      scheduleToolReload();
     } else if (t === "error") {
       setErr(pl.message || "agent error"); setTyping(false); setBusy(false);
     }
@@ -1860,14 +1971,20 @@ function ChatPanel(p) {
       return h("span", { key: j, className: "mc-chip", style: { borderColor: "var(--mc-accent-2)", color: "var(--mc-accent-2)" } }, "⚙ " + n);
     });
     const merged = mm._results && mm._results.length;
-    return h("div", { key: i, className: cn("mc-msg", mm.role === "user" ? "user" : "assistant") + (isToolResult ? " tool-result-msg" : "") },
+    const orphan = mm._orphan;
+    // Orphan tool result (no matching call in this session): render with the
+    // unified formatted output block instead of a raw muted text blob.
+    if (isToolResult && orphan) {
+      return h("div", { key: i, className: "mc-msg assistant tool-result-msg" },
+        h("div", { className: "role" }, "tool" + (mm.tool_name ? " · " + mm.tool_name : "")),
+        renderToolResultBlock(mm.tool_name || "tool", mm.content != null ? mm.content : mm.text));
+    }
+    return h("div", { key: i, className: cn("mc-msg", mm.role === "user" ? "user" : "assistant") },
       h("div", { className: "role" }, mm.role + (mm.tool_name && mm.role !== "tool" ? " · " + mm.tool_name : "")),
-      isToolResult
-        ? h("div", { className: "body", style: { fontFamily: "ui-monospace,Menlo,monospace", fontSize: "11.5px", whiteSpace: "pre-wrap", color: "var(--mc-muted)" } }, str(mm.text))
-        : (mm.role === "user"
-          ? h("div", { className: "body" }, str(mm.text))
-          : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(mm.text) } })),
-      (tools.length && !isToolResult && !merged && !(mm.tool_calls && mm.tool_calls.length)) ? h("div", { className: "tools" }, "tools used:", tools) : null,
+      mm.role === "user"
+        ? h("div", { className: "body" }, str(mm.text))
+        : h("div", { className: "body md", dangerouslySetInnerHTML: { __html: mdToHtml(mm.text) } }),
+      (tools.length && !merged && !(mm.tool_calls && mm.tool_calls.length)) ? h("div", { className: "tools" }, "tools used:", tools) : null,
       renderToolCalls(mm),
       mm.think ? h("div", { className: "think" }, h("strong", null, "thinking: "), h("span", { dangerouslySetInnerHTML: { __html: mdToHtml(mm.think) } })) : null);
   });
